@@ -2397,24 +2397,54 @@ class MAILPN_Mailing {
     $subject = $args['subject'];
     $headers = $args['headers'];
 
-    // Skip if already HTML (sent by MailPN or another plugin)
-    if (stripos($message, '<!DOCTYPE') !== false || stripos($message, 'mailpn-table-main') !== false) {
+    // Skip if already wrapped by MailPN
+    if (stripos($message, 'mailpn-table-main') !== false) {
       return $args;
     }
 
-    // Convert plain text body to HTML
-    $html = htmlspecialchars($message, ENT_QUOTES, 'UTF-8');
-    // URLs → clickable links
-    $html = preg_replace(
-      '/(https?:\/\/[^\s<>\)\"]+)/i',
-      '<a href="$1" target="_blank" style="color:#3d731a;text-decoration:underline;">$1</a>',
-      $html
-    );
-    // Double newlines → paragraphs, single newlines → <br>
-    $paragraphs = preg_split('/\n\s*\n/', $html);
-    $html = '<p>' . implode('</p><p>', array_map(function($p) {
-      return nl2br(trim($p));
-    }, $paragraphs)) . '</p>';
+    // Detect if the message is already HTML
+    $is_html = false;
+
+    // Check Content-Type header for text/html
+    $header_str = is_array($headers) ? implode("\n", $headers) : (string) $headers;
+    if (preg_match('/Content-Type:\s*text\/html/i', $header_str)) {
+      $is_html = true;
+    }
+
+    // Check for HTML document structures
+    if (!$is_html && (stripos($message, '<!DOCTYPE') !== false || stripos($message, '<html') !== false)) {
+      $is_html = true;
+    }
+
+    // Check for common HTML block-level tags
+    if (!$is_html && preg_match('/<(p|div|table|br\s*\/?>|h[1-6]|ul|ol|center|style|head|body)\b/i', $message)) {
+      $is_html = true;
+    }
+
+    if ($is_html) {
+      // Content is already HTML — extract body content if it's a full document
+      $html = $message;
+      if (preg_match('/<body[^>]*>(.*)<\/body>/is', $html, $body_match)) {
+        $html = trim($body_match[1]);
+      } elseif (preg_match('/<html[^>]*>(.*)<\/html>/is', $html, $html_match)) {
+        $html = preg_replace('/<head[^>]*>.*?<\/head>/is', '', $html_match[1]);
+        $html = trim($html);
+      }
+    } else {
+      // Convert plain text body to HTML
+      $html = htmlspecialchars($message, ENT_QUOTES, 'UTF-8');
+      // URLs → clickable links
+      $html = preg_replace(
+        '/(https?:\/\/[^\s<>\)\"]+)/i',
+        '<a href="$1" target="_blank" style="color:#3d731a;text-decoration:underline;">$1</a>',
+        $html
+      );
+      // Double newlines → paragraphs, single newlines → <br>
+      $paragraphs = preg_split('/\n\s*\n/', $html);
+      $html = '<p>' . implode('</p><p>', array_map(function($p) {
+        return nl2br(trim($p));
+      }, $paragraphs)) . '</p>';
+    }
 
     // Clean subject: remove [Site Name] prefix
     $clean_subject = preg_replace('/^\[.+?\]\s*/', '', $subject);

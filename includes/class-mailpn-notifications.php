@@ -22,11 +22,10 @@ class MAILPN_Notifications {
         <?php endif ?>
 
         <div id="mailpn-popup-notice" class="mailpn-popup mailpn-popup-size-small mailpn-display-none-soft">
-          <button class="mailpn-popup-close-wrapper">
-            <i class="material-icons-outlined">close</i>
-          </button>
-
           <div class="mailpn-popup-content mailpn-text-align-center">
+            <button class="mailpn-popup-close-wrapper">
+              <i class="material-icons-outlined">close</i>
+            </button>
             <div class="mailpn-p-30">
               <?php
                 switch ($mailpn_notice) {

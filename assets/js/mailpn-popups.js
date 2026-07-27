@@ -25,12 +25,12 @@
         document.body.classList.add('mailpn-popup-open');
   
         // Add close button if not present
-        if (!popupElement.find('.mailpn-popup-close').length) {
+        if (!popupElement.find('.mailpn-popup-close, .mailpn-popup-close-wrapper').length) {
           var closeButton = $('<button class="mailpn-popup-close-wrapper"><i class="material-icons-outlined">close</i></button>');
           closeButton.on('click', function() {
             MAILPN_Popups.close();
           });
-          popupElement.append(closeButton);
+          popupElement.find('.mailpn-popup-content').append(closeButton);
         }
   
         // Store and call callbacks if provided
