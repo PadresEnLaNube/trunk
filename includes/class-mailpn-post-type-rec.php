@@ -574,7 +574,8 @@ class MAILPN_Post_Type_Rec
           </p>
 
           <?php if (is_array($clicks) && !empty($clicks)): ?>
-            <a href="#" class="mailpn-popup-open" data-mailpn-popup-id="mailpn-click-stats-<?php echo esc_attr($post_id); ?>">
+            <?php $mailpn_links_color = get_option('mailpn_links_color', '#86b3ac'); ?>
+            <a href="#" class="mailpn-popup-open" data-mailpn-popup-id="mailpn-click-stats-<?php echo esc_attr($post_id); ?>" style="color:<?php echo esc_attr($mailpn_links_color); ?>;">
               <i class="material-icons-outlined mailpn-vertical-align-middle mailpn-font-size-16 mailpn-mr-5">link</i>
               <?php
               $total_clicks = count($clicks);
