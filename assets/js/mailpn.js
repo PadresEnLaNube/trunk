@@ -704,7 +704,7 @@
 
       // Show popup using MAILPN_Popups
       var popup_id = 'mailpn-global-queue-popup';
-      var full_popup_html = '<div id="' + popup_id + '" class="mailpn-popup mailpn-global-queue-popup-wrapper">' +
+      var full_popup_html = '<div id="' + popup_id + '" class="mailpn-popup mailpn-global-queue-popup-wrapper mailpn-popup-size-medium">' +
         '<div class="mailpn-popup-content">' + popup_content + '</div>' +
         '</div>';
 

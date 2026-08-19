@@ -97,6 +97,8 @@ class MAILPN_Forms {
           }else{
             if (array_key_exists('value', $mailpn_input)) {
               $mailpn_value = $mailpn_input['value'];
+            }elseif (array_key_exists('default', $mailpn_input)) {
+              $mailpn_value = $mailpn_input['default'];
             }else{
               $mailpn_value = '';
             }
@@ -111,15 +113,29 @@ class MAILPN_Forms {
       case 'input':
         switch ($mailpn_input['type']) {
           case 'file':
-            ?>
-              <?php if (empty($mailpn_value)): ?>
-                <p class="mailpn-m-10"><?php esc_html_e('No file found', 'mailpn'); ?></p>
-              <?php else: ?>
-                <p class="mailpn-m-10">
-                  <a href="<?php echo esc_url(get_post_meta($mailpn_id, $mailpn_input['id'], true)['url']); ?>" target="_blank"><?php echo esc_html(basename(get_post_meta($mailpn_id, $mailpn_input['id'], true)['url'])); ?></a>
-                </p>
-              <?php endif ?>
-            <?php
+            if (!empty($mailpn_input['upload'])) {
+              ?>
+                <input
+                  id="<?php echo esc_attr($mailpn_input['id']); ?>"
+                  name="<?php echo esc_attr($mailpn_input['id']); ?>"
+                  class="mailpn-field <?php echo array_key_exists('class', $mailpn_input) ? esc_attr($mailpn_input['class']) : ''; ?>"
+                  type="file"
+                  <?php echo (!empty($mailpn_input['accept']) ? 'accept="' . esc_attr($mailpn_input['accept']) . '"' : ''); ?>
+                  <?php echo ((array_key_exists('required', $mailpn_input) && $mailpn_input['required'] == true) ? 'required' : ''); ?>
+                  <?php echo (((array_key_exists('disabled', $mailpn_input) && $mailpn_input['disabled'] == 'true') || $disabled) ? 'disabled' : ''); ?>
+                />
+              <?php
+            } else {
+              ?>
+                <?php if (empty($mailpn_value)): ?>
+                  <p class="mailpn-m-10"><?php esc_html_e('No file found', 'mailpn'); ?></p>
+                <?php else: ?>
+                  <p class="mailpn-m-10">
+                    <a href="<?php echo esc_url(get_post_meta($mailpn_id, $mailpn_input['id'], true)['url']); ?>" target="_blank"><?php echo esc_html(basename(get_post_meta($mailpn_id, $mailpn_input['id'], true)['url'])); ?></a>
+                  </p>
+                <?php endif ?>
+              <?php
+            }
             break;
           case 'checkbox':
             ?>
@@ -229,7 +245,7 @@ class MAILPN_Forms {
             break;
           default:
             ?>
-              <input id="<?php echo esc_attr($mailpn_input['id']) . ((array_key_exists('multiple', $mailpn_input) && $mailpn_input['multiple']) ? '[]' : ''); ?>" name="<?php echo esc_attr($mailpn_input['id']) . ((array_key_exists('multiple', $mailpn_input) && $mailpn_input['multiple']) ? '[]' : ''); ?>" <?php echo (array_key_exists('multiple', $mailpn_input) && $mailpn_input['multiple'] ? 'multiple' : ''); ?> class="mailpn-field <?php echo array_key_exists('class', $mailpn_input) ? esc_attr($mailpn_input['class']) : ''; ?>" type="<?php echo esc_attr($mailpn_input['type']); ?>" <?php echo ((array_key_exists('required', $mailpn_input) && $mailpn_input['required'] == true) ? 'required' : ''); ?> <?php echo (((array_key_exists('disabled', $mailpn_input) && $mailpn_input['disabled'] == 'true') || $disabled) ? 'disabled' : ''); ?> <?php echo (((array_key_exists('step', $mailpn_input) && $mailpn_input['step'] != '')) ? 'step="' . esc_attr($mailpn_input['step']) . '"' : ''); ?> <?php echo (isset($mailpn_input['max']) ? 'max=' . esc_attr($mailpn_input['max']) : ''); ?> <?php echo (isset($mailpn_input['min']) ? 'min=' . esc_attr($mailpn_input['min']) : ''); ?> <?php echo (isset($mailpn_input['pattern']) ? 'pattern=' . esc_attr($mailpn_input['pattern']) : ''); ?> value="<?php echo (!empty($mailpn_input['button_text']) ? esc_html($mailpn_input['button_text']) : esc_html($mailpn_value)); ?>" placeholder="<?php echo (array_key_exists('placeholder', $mailpn_input) ? esc_html($mailpn_input['placeholder']) : ''); ?>" <?php echo wp_kses_post($mailpn_parent_block); ?>/>
+              <input id="<?php echo esc_attr($mailpn_input['id']) . ((array_key_exists('multiple', $mailpn_input) && $mailpn_input['multiple']) ? '[]' : ''); ?>" name="<?php echo esc_attr($mailpn_input['id']) . ((array_key_exists('multiple', $mailpn_input) && $mailpn_input['multiple']) ? '[]' : ''); ?>" <?php echo (array_key_exists('multiple', $mailpn_input) && $mailpn_input['multiple'] ? 'multiple' : ''); ?> class="mailpn-field <?php echo array_key_exists('class', $mailpn_input) ? esc_attr($mailpn_input['class']) : ''; ?>" type="<?php echo esc_attr($mailpn_input['type']); ?>" <?php echo ((array_key_exists('required', $mailpn_input) && $mailpn_input['required'] == true) ? 'required' : ''); ?> <?php echo (((array_key_exists('disabled', $mailpn_input) && $mailpn_input['disabled'] == 'true') || $disabled) ? 'disabled' : ''); ?> <?php echo (((array_key_exists('step', $mailpn_input) && $mailpn_input['step'] != '')) ? 'step="' . esc_attr($mailpn_input['step']) . '"' : ''); ?> <?php echo (isset($mailpn_input['max']) ? 'max=' . esc_attr($mailpn_input['max']) : ''); ?> <?php echo (isset($mailpn_input['min']) ? 'min=' . esc_attr($mailpn_input['min']) : ''); ?> <?php echo (isset($mailpn_input['pattern']) ? 'pattern=' . esc_attr($mailpn_input['pattern']) : ''); ?> <?php echo (isset($mailpn_input['accept']) ? 'accept="' . esc_attr($mailpn_input['accept']) . '"' : ''); ?> <?php if ($mailpn_input['type'] !== 'file'): ?>value="<?php echo (!empty($mailpn_input['button_text']) ? esc_html($mailpn_input['button_text']) : esc_html($mailpn_value)); ?>"<?php endif; ?> placeholder="<?php echo (array_key_exists('placeholder', $mailpn_input) ? esc_html($mailpn_input['placeholder']) : ''); ?>" <?php echo wp_kses_post($mailpn_parent_block); ?>/>
             <?php
             break;
         }
@@ -627,18 +643,31 @@ class MAILPN_Forms {
   public static function mailpn_input_wrapper_builder($input_array, $type, $mailpn_id = 0, $disabled = 0, $mailpn_format = 'half'){
     // MAILPN_Forms::mailpn_input_wrapper_builder($input_array, $type, $mailpn_id = 0, $disabled = 0, $mailpn_format = 'half')
     ?>
-      <?php if (array_key_exists('section', $input_array) && !empty($input_array['section'])): ?>      
-        <?php if ($input_array['section'] == 'start'): ?>
-          <div class="mailpn-toggle-wrapper mailpn-section-wrapper mailpn-position-relative <?php echo array_key_exists('class', $input_array) ? esc_attr($input_array['class']) : ''; ?>" id="<?php echo array_key_exists('id', $input_array) ? esc_attr($input_array['id']) : ''; ?>">
-            <a href="#" class="mailpn-toggle mailpn-width-100-percent mailpn-text-decoration-none">
-              <div class="mailpn-display-table mailpn-width-100-percent mailpn-mb-20">
-                <div class="mailpn-display-inline-table mailpn-width-90-percent">
-                  <label class="mailpn-cursor-pointer mailpn-mb-20 mailpn-color-main-0"><?php echo wp_kses_post($input_array['label']); ?></label>
-                </div>
-                <div class="mailpn-display-inline-table mailpn-width-10-percent mailpn-text-align-right">
-                  <i class="material-icons-outlined mailpn-cursor-pointer mailpn-color-main-0">add</i>
-                </div>
+      <?php if (array_key_exists('section', $input_array) && !empty($input_array['section'])): ?>
+        <?php if ($input_array['section'] == 'label'): ?>
+              <?php $label_color = !empty($input_array['section_color']) ? $input_array['section_color'] : '#7c3aed'; ?>
+              <div class="mailpn-sections-label" style="background: <?php echo esc_attr($label_color); ?>;">
+                <span><?php echo wp_kses_post($input_array['label']); ?></span>
               </div>
+        <?php elseif ($input_array['section'] == 'start'): ?>
+          <?php $section_color = !empty($input_array['section_color']) ? $input_array['section_color'] : ''; ?>
+          <div class="mailpn-toggle-wrapper mailpn-section-wrapper mailpn-position-relative <?php echo $section_color ? 'mailpn-section-colored' : ''; ?> <?php echo array_key_exists('class', $input_array) ? esc_attr($input_array['class']) : ''; ?>" id="<?php echo array_key_exists('id', $input_array) ? esc_attr($input_array['id']) : ''; ?>" <?php echo $section_color ? 'style="--mailpn-section-color: ' . esc_attr($section_color) . ';"' : ''; ?>>
+            <a href="#" class="mailpn-toggle mailpn-width-100-percent mailpn-text-decoration-none">
+              <?php if ($section_color): ?>
+                <div class="mailpn-section-header">
+                  <label class="mailpn-cursor-pointer"><?php echo wp_kses_post($input_array['label']); ?></label>
+                  <i class="material-icons-outlined mailpn-cursor-pointer">add</i>
+                </div>
+              <?php else: ?>
+                <div class="mailpn-display-table mailpn-width-100-percent mailpn-mb-20">
+                  <div class="mailpn-display-inline-table mailpn-width-90-percent">
+                    <label class="mailpn-cursor-pointer mailpn-mb-20 mailpn-color-main-0"><?php echo wp_kses_post($input_array['label']); ?></label>
+                  </div>
+                  <div class="mailpn-display-inline-table mailpn-width-10-percent mailpn-text-align-right">
+                    <i class="material-icons-outlined mailpn-cursor-pointer mailpn-color-main-0">add</i>
+                  </div>
+                </div>
+              <?php endif; ?>
             </a>
 
             <div class="mailpn-content mailpn-pl-10 mailpn-toggle-content mailpn-mb-20 mailpn-display-none-soft">
@@ -653,9 +682,9 @@ class MAILPN_Forms {
           </div>
         <?php endif ?>
       <?php else: ?>
-        <div class="mailpn-input-wrapper <?php echo esc_attr($input_array['id']); ?> <?php echo !empty($input_array['tabs']) ? 'mailpn-input-tabbed' : ''; ?> mailpn-input-field-<?php echo esc_attr($input_array['input']); ?> <?php echo (!empty($input_array['required']) && $input_array['required'] == true) ? 'mailpn-input-field-required' : ''; ?> <?php echo ($disabled) ? 'mailpn-input-field-disabled' : ''; ?>">
+        <div class="mailpn-input-wrapper mailpn-mb-10 <?php echo esc_attr($input_array['id']); ?> <?php echo !empty($input_array['tabs']) ? 'mailpn-input-tabbed' : ''; ?> mailpn-input-field-<?php echo esc_attr($input_array['input']); ?> <?php echo (!empty($input_array['required']) && $input_array['required'] == true) ? 'mailpn-input-field-required' : ''; ?> <?php echo ($disabled) ? 'mailpn-input-field-disabled' : ''; ?>">
           <?php if (array_key_exists('label', $input_array) && !empty($input_array['label'])): ?>
-            <div class="mailpn-display-inline-table <?php echo (($mailpn_format == 'half' && !(array_key_exists('type', $input_array) && $input_array['type'] == 'submit')) ? 'mailpn-width-40-percent' : 'mailpn-width-100-percent'); ?> mailpn-tablet-display-block mailpn-tablet-width-100-percent mailpn-vertical-align-top">
+            <div class="mailpn-display-inline-table <?php echo (($mailpn_format == 'half' && !(array_key_exists('type', $input_array) && $input_array['type'] == 'submit') && !(array_key_exists('input', $input_array) && $input_array['input'] == 'button')) ? 'mailpn-width-40-percent' : 'mailpn-width-100-percent'); ?> mailpn-tablet-display-block mailpn-tablet-width-100-percent mailpn-vertical-align-top">
               <div class="mailpn-p-10 <?php echo (array_key_exists('parent', $input_array) && !empty($input_array['parent']) && $input_array['parent'] != 'this') ? 'mailpn-pl-30' : ''; ?>">
                 <label class="mailpn-vertical-align-middle mailpn-display-block <?php echo (array_key_exists('description', $input_array) && !empty($input_array['description'])) ? 'mailpn-toggle' : ''; ?>" for="<?php echo esc_attr($input_array['id']); ?>"><?php echo esc_attr($input_array['label']); ?> <?php echo (array_key_exists('required', $input_array) && !empty($input_array['required']) && $input_array['required'] == true) ? '<span class="mailpn-tooltip" title="' . esc_html(__('Required field', 'mailpn')) . '">*</span>' : ''; ?><?php echo (array_key_exists('description', $input_array) && !empty($input_array['description'])) ? '<i class="material-icons-outlined mailpn-cursor-pointer mailpn-float-right">add</i>' : ''; ?></label>
 
@@ -668,7 +697,7 @@ class MAILPN_Forms {
             </div>
           <?php endif ?>
 
-          <div class="mailpn-display-inline-table <?php echo ((array_key_exists('label', $input_array) && empty($input_array['label'])) ? 'mailpn-width-100-percent' : (($mailpn_format == 'half' && !(array_key_exists('type', $input_array) && $input_array['type'] == 'submit')) ? 'mailpn-width-60-percent' : 'mailpn-width-100-percent')); ?> mailpn-tablet-display-block mailpn-tablet-width-100-percent mailpn-vertical-align-top">
+          <div class="mailpn-display-inline-table <?php echo ((array_key_exists('label', $input_array) && empty($input_array['label'])) ? 'mailpn-width-100-percent' : (($mailpn_format == 'half' && !(array_key_exists('type', $input_array) && $input_array['type'] == 'submit') && !(array_key_exists('input', $input_array) && $input_array['input'] == 'button')) ? 'mailpn-width-60-percent' : 'mailpn-width-100-percent')); ?> mailpn-tablet-display-block mailpn-tablet-width-100-percent mailpn-vertical-align-top">
             <div class="mailpn-p-10 <?php echo (array_key_exists('parent', $input_array) && !empty($input_array['parent']) && $input_array['parent'] != 'this') ? 'mailpn-pl-30' : ''; ?>">
               <div class="mailpn-input-field"><?php self::mailpn_input_builder($input_array, $type, $mailpn_id, $disabled); ?></div>
             </div>
@@ -692,18 +721,31 @@ class MAILPN_Forms {
   public static function mailpn_input_display_wrapper($input_array, $type, $mailpn_id = 0, $mailpn_meta_array = 0, $mailpn_array_index = 0, $mailpn_format = 'half') {
     ob_start();
     ?>
-    <?php if (array_key_exists('section', $input_array) && !empty($input_array['section'])): ?>      
-      <?php if ($input_array['section'] == 'start'): ?>
-        <div class="mailpn-toggle-wrapper mailpn-section-wrapper mailpn-position-relative <?php echo array_key_exists('class', $input_array) ? esc_attr($input_array['class']) : ''; ?>" id="<?php echo array_key_exists('id', $input_array) ? esc_attr($input_array['id']) : ''; ?>">
-          <a href="#" class="mailpn-toggle mailpn-width-100-percent mailpn-text-decoration-none">
-            <div class="mailpn-display-table mailpn-width-100-percent mailpn-mb-20">
-              <div class="mailpn-display-inline-table mailpn-width-90-percent">
-                <label class="mailpn-cursor-pointer mailpn-mb-20 mailpn-color-main-0"><?php echo wp_kses($input_array['label'], MAILPN_KSES); ?></label>
-              </div>
-              <div class="mailpn-display-inline-table mailpn-width-10-percent mailpn-text-align-right">
-                <i class="material-icons-outlined mailpn-cursor-pointer mailpn-color-main-0">add</i>
-              </div>
+    <?php if (array_key_exists('section', $input_array) && !empty($input_array['section'])): ?>
+      <?php if ($input_array['section'] == 'label'): ?>
+            <?php $label_color = !empty($input_array['section_color']) ? $input_array['section_color'] : '#7c3aed'; ?>
+            <div class="mailpn-sections-label" style="background: <?php echo esc_attr($label_color); ?>;">
+              <span><?php echo wp_kses_post($input_array['label']); ?></span>
             </div>
+      <?php elseif ($input_array['section'] == 'start'): ?>
+        <?php $section_color = !empty($input_array['section_color']) ? $input_array['section_color'] : ''; ?>
+        <div class="mailpn-toggle-wrapper mailpn-section-wrapper mailpn-position-relative <?php echo $section_color ? 'mailpn-section-colored' : ''; ?> <?php echo array_key_exists('class', $input_array) ? esc_attr($input_array['class']) : ''; ?>" id="<?php echo array_key_exists('id', $input_array) ? esc_attr($input_array['id']) : ''; ?>" <?php echo $section_color ? 'style="--mailpn-section-color: ' . esc_attr($section_color) . ';"' : ''; ?>>
+          <a href="#" class="mailpn-toggle mailpn-width-100-percent mailpn-text-decoration-none">
+            <?php if ($section_color): ?>
+              <div class="mailpn-section-header">
+                <label class="mailpn-cursor-pointer"><?php echo wp_kses($input_array['label'], MAILPN_KSES); ?></label>
+                <i class="material-icons-outlined mailpn-cursor-pointer">add</i>
+              </div>
+            <?php else: ?>
+              <div class="mailpn-display-table mailpn-width-100-percent mailpn-mb-20">
+                <div class="mailpn-display-inline-table mailpn-width-90-percent">
+                  <label class="mailpn-cursor-pointer mailpn-mb-20 mailpn-color-main-0"><?php echo wp_kses($input_array['label'], MAILPN_KSES); ?></label>
+                </div>
+                <div class="mailpn-display-inline-table mailpn-width-10-percent mailpn-text-align-right">
+                  <i class="material-icons-outlined mailpn-cursor-pointer mailpn-color-main-0">add</i>
+                </div>
+              </div>
+            <?php endif; ?>
           </a>
 
           <div class="mailpn-content mailpn-pl-10 mailpn-toggle-content mailpn-mb-20 mailpn-display-none-soft">
@@ -718,7 +760,7 @@ class MAILPN_Forms {
         </div>
       <?php endif ?>
     <?php else: ?>
-      <div class="mailpn-input-wrapper <?php echo esc_attr($input_array['id']); ?> mailpn-input-display-<?php echo esc_attr($input_array['input']); ?> <?php echo (!empty($input_array['required']) && $input_array['required'] == true) ? 'mailpn-input-field-required' : ''; ?>">
+      <div class="mailpn-input-wrapper mailpn-mb-10 <?php echo esc_attr($input_array['id']); ?> mailpn-input-display-<?php echo esc_attr($input_array['input']); ?> <?php echo (!empty($input_array['required']) && $input_array['required'] == true) ? 'mailpn-input-field-required' : ''; ?>">
         <?php if (array_key_exists('label', $input_array) && !empty($input_array['label'])): ?>
           <div class="mailpn-display-inline-table <?php echo ($mailpn_format == 'half' ? 'mailpn-width-40-percent' : 'mailpn-width-100-percent'); ?> mailpn-tablet-display-block mailpn-tablet-width-100-percent mailpn-vertical-align-top">
             <div class="mailpn-p-10 <?php echo (array_key_exists('parent', $input_array) && !empty($input_array['parent']) && $input_array['parent'] != 'this') ? 'mailpn-pl-30' : ''; ?>">

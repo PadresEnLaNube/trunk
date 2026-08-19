@@ -4,14 +4,14 @@ Donate link: https://padresenlanube.com/
 Tags: email, mailing, notifications, sender, mail address
 Requires at least: 3.0
 Tested up to: 7.0
-Stable tag: 1.0.81
+Stable tag: 1.0.85
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 Effortlessly manage your email campaigns. Schedule, send, and track emails directly from your dashboard to engage your audience like never before.
 
 == Description ==
 
-Transform your WordPress site into a powerful email management hub with our intuitive plugin. Whether you're running newsletters, promotional campaigns, or customer outreach, this tool empowers you to Schedule Emails (plan campaigns in advance with an easy-to-use scheduler), Personalize Content (Create tailored messages with dynamic content fields), Track Performance (Monitor open rates, click-through rates, and engagement metrics in real time), Seamless Integration: (Connect with popular email services or use your SMTP server), Automation Features: (Set up automated responses and drip campaigns to save time and boost engagement). Perfect for bloggers, small businesses, and marketers, this plugin combines simplicity with robust functionality to ensure your emails get delivered and make an impact. Start growing your audience today!
+Transform your WordPress site into a powerful email management hub with our intuitive plugin. Whether you're running newsletters, promotional campaigns, or customer outreach, this tool empowers you to Schedule Emails (plan campaigns in advance with an easy-to-use scheduler), Personalize Content (Create tailored messages with dynamic content fields), Track Performance (Monitor open rates, click-through rates, and engagement metrics in real time), Seamless Integration (Connect with popular email services or use your SMTP server), Automation Features (Set up automated responses and drip campaigns to save time and boost engagement), Email Design System (Customize typography, colors, buttons, and headers/footers with a live preview panel), Deliverability Analysis (SPF, DKIM, DMARC, and MX record verification with a 0-100 score), Queue Monitoring (Floating status button, global queue popup with estimated completion times, and consecutive errors auto-pause), WooCommerce Email Wrapping (Apply your branded template to all WooCommerce transactional emails), and Error Diagnostics (Detailed error logging, per-email retry, and admin notifications). Perfect for bloggers, small businesses, and marketers, this plugin combines simplicity with robust functionality to ensure your emails get delivered and make an impact. Start growing your audience today!
 
 = Core Features =
 
@@ -53,6 +53,7 @@ Transform your WordPress site into a powerful email management hub with our intu
   - **Purchase Emails**: Automatically send emails after purchase completion with configurable delays
   - **Abandoned Cart Emails**: Detect and send emails to users who abandon their shopping carts. Configurable delay periods (minutes, hours, or days)
   - **Cart Tracking**: Monitor cart activity and send targeted recovery emails
+  - **WooCommerce Email Wrapping**: Optionally wrap WooCommerce transactional emails with the MailPN template (header, footer, design settings, legal info)
 
 * **Email Distribution Options**: Flexible recipient targeting:
   - Send to all users
@@ -128,12 +129,15 @@ Transform your WordPress site into a powerful email management hub with our intu
 * **Error Handling & Logging**: Robust error management:
   - Detailed error messages for failed sends
   - SMTP error reporting
-  - Option to email admin on send failures
-  - Error retry functionality
-  - Comprehensive error logs with timestamps and details
-  - Global error log viewer with full log access and clearing functionality
+  - Option to email admin on send failures with full diagnostics (SMTP config, server info, context)
+  - Error retry functionality for individual emails and bulk resend
+  - Comprehensive error logs with timestamps and details saved to `wp-content/mailpn-email-errors.log`
+  - Global error log viewer with full log access, statistics, and clearing functionality
   - Error popup integration for quick troubleshooting
   - Improved message contrast for better readability of error and success notifications
+  - Exact error count display with singular/plural formatting
+  - Detailed error view per record: error message, recipient, subject, headers, server IP, user info
+  - Distinction between validation skips and actual send failures for accurate error counting
 
 * **Role-Based Permissions**: Fine-grained access control:
   - Custom capabilities for email management
@@ -147,6 +151,11 @@ Transform your WordPress site into a powerful email management hub with our intu
   - Progress tracking for bulk sends
   - Automatic cleanup of processed items
   - Queue status indicators
+  - Floating queue status button for administrators showing pending count and send/pause state
+  - Global queue status popup with templates breakdown, next batch preview, estimated send times, and daily limit progress
+  - Consecutive errors auto-pause: configurable limit that automatically pauses the queue after repeated failures and notifies the admin
+  - Estimated completion time calculation for ongoing sends
+  - Remove individual users from specific template queues
 
 * **Welcome Email Management**: Dedicated interface for managing welcome emails:
   - View pending welcome email registrations
@@ -179,13 +188,24 @@ Transform your WordPress site into a powerful email management hub with our intu
   - Scheduled email processing
   - WooCommerce automated email processing
 
+* **Onboarding Tutorial**: Interactive 5-step tutorial overlay for first-time users covering Email Contents, Email Design, SMTP Configuration, and key features. Includes progress bar, skip/back/next navigation, and section highlighting.
+
+* **Deliverability Analysis Tools**: Built-in diagnostic suite:
+  - SPF, DKIM (5 common selectors), DMARC, and MX record verification with a 0-100 score
+  - Email header analysis for pasted headers (SPF/DKIM/DMARC results, spam flags)
+  - External service test email sender for use with mail-tester.com
+  - User notification management: search users, toggle notification status, view per-user sending statistics (sent, opened, clicked, detailed history)
+
 * **Form Builder Integration**: Advanced form building capabilities:
   - Multiple input types (text, email, select, textarea, file uploads, images, videos, audio)
+  - Native file upload input support with accept attribute
   - Conditional fields
   - Multi-field groups
   - Password strength checker
   - Range inputs with visual feedback
   - Star rating inputs
+  - Section labels with customizable colors
+  - Colored collapsible sections with CSS variable theming
 
 * **Public-Facing Features**:
   - Email subscription management popups
@@ -288,7 +308,7 @@ This section provides comprehensive documentation for developers who want to int
 === Plugin Structure ===
 
 * **Main File**: `mailpn.php`
-* **Version**: 1.0.39
+* **Version**: 1.0.85
 * **Constants**: `MAILPN_VERSION`, `MAILPN_DIR`, `MAILPN_URL`, `MAILPN_CPTS`
 * **Custom Post Types**: `mailpn_mail` (emails), `mailpn_rec` (records)
 
@@ -316,6 +336,7 @@ do_shortcode('[mailpn-sender
 * `mailpn_once` (optional): Set to `1` to send only once per user
 * `post_id` (optional): Related post ID
 * `post_parent_id` (optional): Parent post ID
+* `mailpn_attachments_paths` (optional): File paths to attach. Accepts array, serialized string, or comma-separated paths. Each path is validated with `file_exists()` before attaching.
 
 ==== Using PHP Class Directly ====
 
@@ -373,7 +394,29 @@ Access plugin settings using WordPress `get_option()`:
 
 ==== Tracking & Deliverability ====
 * `mailpn_click_tracking` - Enable click tracking ('on'/'off')
-* `mailpn_open_tracking` - Enable open tracking ('on'/'off'). Warning: Uses inline JavaScript which may affect spam score. Disable for better deliverability.
+* `mailpn_open_tracking` - Enable open tracking ('on'/'off'). Warning: May affect spam score. Disable for better deliverability.
+
+==== Error Handling ====
+* `mailpn_errors_to_admin` - Send error notifications to admin ('on'/'off')
+* `mailpn_consecutive_errors_limit` - Max consecutive send failures before auto-pausing the queue (default: 10)
+
+==== Email Design ====
+* `mailpn_font_family` - Email font family
+* `mailpn_font_size_desktop` - Desktop font size (px)
+* `mailpn_font_size_mobile` - Mobile font size (px)
+* `mailpn_heading_size_h1` / `h2` / `h3` - Heading sizes (px)
+* `mailpn_line_height` - Line height
+* `mailpn_background_color` - Email background color
+* `mailpn_text_color` - Email text color
+* `mailpn_button_bg_color` - Button background color
+* `mailpn_button_text_color` - Button text color
+* `mailpn_button_border_radius` - Button border radius (px)
+* `mailpn_header_bg_color` - Header background color
+* `mailpn_footer_bg_color` - Footer background color
+* `mailpn_footer_text_color` - Footer text color
+
+==== WooCommerce ====
+* `mailpn_wc_emails_wrapper` - Wrap WooCommerce emails with MailPN template ('on'/'off')
 
 === Email Queue Management ===
 
@@ -425,7 +468,7 @@ Access statistics via AJAX action: `wp_ajax_mailpn_get_statistics` (requires pro
 === Hooks and Filters ===
 
 ==== Actions ====
-* `mailpn_form_save` - Fired when forms are saved
+* `mailpn_form_save` - Fired when forms are saved (params: $entity_id, $form_data, $form_type, $form_subtype, $post_type)
 * `mailpn_cron_daily` - Daily cron task
 * `mailpn_cron_ten_minutes` - Every 10 minutes cron task
 * `mailpn_cron_weekly` - Weekly cron task
@@ -435,6 +478,37 @@ Access statistics via AJAX action: `wp_ajax_mailpn_get_statistics` (requires pro
 * `wp_mail_from_name` - Customize sender name
 * `retrieve_password_message` - Customize password reset email
 * `wp_new_user_notification_email` - Customize new user email
+* `mailpn_content_filters` - Modify placeholder replacements before email processing (params: $filters_array, $post_id, $post_parent_id, $mail_id)
+* `mailpn_mail_types` - Register custom email types beyond built-in ones
+
+=== Public Helper Methods ===
+
+Methods available for external plugin integration:
+
+```
+// Check if an email address is in the exception list
+MAILPN_Mailing::mailpn_is_email_address_excepted('user@example.com'); // returns bool
+
+// Get list of user IDs eligible to receive an email template
+MAILPN_Mailing::mailpn_get_users_to($mail_id); // returns array of user IDs
+
+// Check if a specific user matches the distribution rules for an email
+MAILPN_Mailing::mailpn_user_matches_distribution($mail_id, $user_id); // returns bool
+
+// Log a send attempt for debugging
+MAILPN_Mailing::mailpn_log_send_attempt($mail_id, $user_id, 'custom_source');
+
+// Get email error statistics
+MAILPN_Debug::get_email_error_stats(); // returns array: exists, total_errors, file_size, last_error
+
+// Get email error log contents
+MAILPN_Debug::get_email_error_log($lines); // returns last N lines from error log
+
+// Check/reset tutorial status
+MAILPN_Tutorial::should_display(); // returns bool
+MAILPN_Tutorial::mark_completed($completed); // stores 'completed' or 'skipped'
+MAILPN_Tutorial::reset(); // re-enables the tutorial
+```
 
 === WooCommerce Integration ===
 
@@ -442,6 +516,7 @@ The plugin automatically integrates with WooCommerce if active:
 * Purchase completion emails
 * Abandoned cart emails
 * Cart activity tracking
+* WooCommerce email wrapping with MailPN template (optional, via `mailpn_wc_emails_wrapper` setting)
 
 === Example Usage ===
 
@@ -487,6 +562,8 @@ do_shortcode('[mailpn-sender
 * `includes/class-mailpn-ajax.php` - AJAX handlers
 * `includes/class-mailpn-cron.php` - Scheduled tasks
 * `includes/class-mailpn-click-tracking.php` - Click tracking
+* `includes/class-mailpn-tutorial.php` - Onboarding tutorial system
+* `includes/class-mailpn-debug.php` - Error logging and debugging utilities
 
 === Requirements ===
 
@@ -500,6 +577,86 @@ For developer support, visit the plugin's support forum or contact: info@padrese
 
 
 == Changelog ==
+
+= 1.0.85 =
+
+- Add complete email design customization system with live preview: font family (8 web-safe fonts), desktop and mobile font sizes, heading sizes (H1/H2/H3), line height, background color, text color, button colors, button border radius, header and footer colors
+- Add desktop and mobile toggle in the email design live preview panel
+- Apply all design settings as inline styles to every email type including WordPress native emails, WooCommerce emails, and custom templates
+- Add email subtitle meta field (mailpn_subtitle) rendered as an H2 below the subject line in email templates
+- Convert WordPress Gutenberg button blocks (wp-block-button, wp-element-button) to inline-styled email-safe buttons preserving custom colors
+- Add optional WooCommerce email wrapping with the MailPN template (mailpn_wc_emails_wrapper setting), detecting WC emails by X-Mailer header and body markers
+- Inject custom link color and max-width into WooCommerce email CSS via woocommerce_email_styles filter
+- Add wp_mail exception filter that applies domain and address exclusion rules to ALL WordPress emails, not just MailPN-sent ones, supporting multiple recipients and Name <email> format
+- Centralize exception checking into a single static method MAILPN_Mailing::mailpn_is_email_address_excepted() with case-insensitive matching
+- Add consecutive errors auto-pause system with configurable limit (mailpn_consecutive_errors_limit, default 10), automatic queue pause, and admin notification email with template name and error count
+- Distinguish between 'skipped' emails (validation issues like unpublished templates, domain exceptions) and actual send failures so skipped emails do not increment the consecutive errors counter
+- Add queue status floating button visible to administrators when emails are pending, showing send/pause icon and pending email count
+- Add global queue status popup with active/paused status and reason, templates in queue with pending counts, next batch preview with estimated send times per user, daily limit progress with remaining quota, and rollover detection for next day
+- Add AJAX endpoint to remove a specific user from a specific template queue
+- Add AJAX endpoints to pause and resume the email queue manually
+- Add estimated completion time calculation for queue processing showing cycles needed, minutes remaining, and human-readable time format
+- Add error list AJAX endpoint returning both validation errors and actual send failures with pagination support
+- Add error details AJAX endpoint with full error information: error message, recipient email, subject, sent datetime, headers, server IP, user info, and template info
+- Add single email retry AJAX endpoint that re-queues the user at front of queue and deletes the error record
+- Display exact error count with singular/plural formatting (e.g. "3 errors occurred during sending") instead of generic messages
+- Add "View Details" and "Retry" action links to error records in the records list
+- Refactor resend errors to collect users from both mailpn_error option and rec error records, deduplicate, skip users who already received the email successfully, delete error records, clear counters, and resume the queue if error-paused
+- Add deliverability analysis tool checking SPF, DKIM (5 common selectors), DMARC, MX records, SMTP config, From email, open tracking, List-Unsubscribe, and text/plain version, returning a 0-100 deliverability score with per-check status and fix suggestions
+- Add email header analysis tool that parses pasted email headers for SPF, DKIM, and DMARC results and spam flags
+- Add external service test email sender for use with mail-tester.com including site info, SMTP status, and date
+- Add user notification management section in settings: search users by login, email, or display name, toggle notification status, view per-user sending statistics with total sent, opened, clicked, last sent and opened dates, and detailed per-record history
+- Add 5-step interactive tutorial onboarding system shown on first settings visit (Welcome, Email Contents, Email Design, SMTP Configuration, Finish) with progress bar, skip/back/next navigation, animated spotlight effect, and section highlighting
+- Store tutorial completion as 'completed' or 'skipped' string instead of boolean for better state tracking
+- Add email error logging to wp-content/mailpn-email-errors.log with timestamp, recipient, type, subject, error message, SMTP config, and server info
+- Add error log viewer AJAX endpoint returning last N lines plus error statistics, and clear log functionality
+- Add email error stats method (MAILPN_Debug::get_email_error_stats) returning file existence, total error count, file size, and last error timestamp
+- Send detailed error diagnostics to admin via email when mailpn_errors_to_admin is enabled, including SMTP config, PHP version, WordPress version, and server info
+- Add open tracking toggle setting (mailpn_open_tracking) with spam score warning; tracking pixel only rendered when enabled
+- Remove inline JavaScript (onload/onerror attributes) from tracking pixel to improve spam scores
+- Conditionally show the "Opened" column in records list only when open or click tracking is enabled
+- Add generic List-Unsubscribe header (URL + mailto dual format) for direct email addresses without requiring UsersPN
+- Add daily rate counter reset in cron job tracking last reset date, also auto-reset at start of queue processing if day boundary crossed
+- Add daily rate calculation display below the rate limit setting showing theoretical maximum emails per day (rate * 6 hours * 24)
+- Prevent sending of draft (non-published) email templates in mailpn_sender_run, mailpn_queue_add, and mailpn_get_users_for_mail with debug logging
+- Fix HTML email detection in wp_mail wrapper: only skip emails already wrapped by MailPN (mailpn-table-main marker), detect HTML content via Content-Type header, document structure tags, and common block-level HTML tags
+- Skip htmlspecialchars() escaping for content that is already HTML, preserving tags from third-party plugins (e.g. Master Study LMS)
+- Extract only the body content from full HTML documents before wrapping with the MailPN template, stripping head section
+- Remove SMTP auth credential empty check that silently disabled SMTP, now lets PHPMailer report the actual authentication error
+- Fix popup wrapper from width 100% to width fit-content so it matches the content box instead of spanning the full viewport
+- Add max-width 90vw to popup wrapper preventing overflow on small screens
+- Remove background-color from popup wrapper so the dark overlay behind it is visible
+- Add default max-width 750px to popup content for popups without a size class
+- Split popup size class rules so the popup wrapper gets an explicit width and popup content keeps its max-width separately (small 300px, medium 750px, large 1400px, full 100%)
+- Fix close button detection checking both mailpn-popup-close and mailpn-popup-close-wrapper preventing duplicate close buttons
+- Move dynamically created close button inside mailpn-popup-content for correct positioning relative to the visible content box
+- Increase popup z-index to 1000000/1000011 and enhance box shadow for better visibility
+- Add recipient column to dashboard emails table showing user ID with edit link, full name, and email with mailto link
+- Change open tracking meta key from _mailpn_opened to mailpn_rec_opened with opened-at date display
+- Add mobile-scrollable wrapper to dashboard table for responsive overflow handling
+- Expand test email content to comprehensive design verification with H1, H2, H3 headings, bold and italic text, links, feature list, styled CTA button, and small text
+- Add pre-send SMTP configuration validation in test emails checking host, port, auth credentials, or sendmail/mail availability
+- Capture PHPMailer errors via custom error handler with multi-layered error diagnosis and proper error handler restoration
+- Add welcome email scheduled sends display showing users with pending emails, scheduled date, human-readable time remaining, and pending registrations filtered by distribution rules
+- Add full status cards for event-triggered email types with active/draft indicator, send count, last sent date, history link, and test email button
+- Enhance queue pause display with structured card showing pause reason (consecutive errors or daily limit), diagnostic message, and action buttons (View Queue Details, Resume Queue)
+- Move hundreds of inline style attributes to CSS classes across all PHP templates for cleaner markup and easier maintenance
+- Add file upload input support in forms with native HTML file input element and accept attribute
+- Add section label type (section: 'label') rendering a colored banner with customizable section_color (default purple #7c3aed)
+- Add colored collapsible section headers with CSS variable --mailpn-section-color for themed sections
+- Fix button input width to use full width layout like submit inputs instead of the 40/60 label/field split
+- Add consistent bottom margin (mailpn-mb-10) to all form input wrappers
+- Add accept attribute support on default input elements for file type restrictions
+- Fix file inputs not outputting invalid value attribute (not allowed on file inputs per HTML spec)
+- Rename admin submenu labels: "Email Templates" to "Templates" and "Emails sent" to "Sendings"
+- Expand MAILPN_KSES allowed HTML to include button element with id, class, type, disabled, and data-mailpn attributes
+- Add approximately 88 new localized strings covering queue management, error display, deliverability checks, statistics, header analysis, and error log viewer
+- Apply corporate color (mailpn_links_color) to the click count link in the email records list
+- Add mailpn_attachments_paths attribute to the mailpn-sender shortcode allowing external plugins to pass file attachments as array, serialized string, or comma-separated paths
+- Fix SMTP credential fields autocomplete to use autocomplete="off" preventing browser autofill
+- Fix typo "10 mimutes" corrected to "10 minutes" in settings description
+- Add mailpn-popup-size-medium class to the global queue status popup for consistent sizing
+- Add mailpn_content_filters and mailpn_mail_types filters for external plugin integration
 
 = 1.0.32 =
 

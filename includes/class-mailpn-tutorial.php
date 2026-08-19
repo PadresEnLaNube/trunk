@@ -284,11 +284,11 @@ class MAILPN_Tutorial
   /**
    * Mark tutorial as completed
    *
-   * @param bool $completed Whether tutorial was completed or skipped
+   * @param bool $completed Whether tutorial was completed (true) or skipped (false)
    */
   public static function mark_completed($completed = true)
   {
-    update_option('mailpn_tutorial_completed', $completed);
+    update_option('mailpn_tutorial_completed', $completed ? 'completed' : 'skipped');
   }
 
   /**
