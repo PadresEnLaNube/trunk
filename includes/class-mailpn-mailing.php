@@ -127,6 +127,7 @@ class MAILPN_Mailing {
       'mailpn_once' => 0,
       'mailpn_type' => '',
       'mailpn_subject' => '',
+      'mailpn_attachments_paths' => '',
     ], $atts);
     
     // Configure PHPMailer for SMTP if enabled
@@ -218,6 +219,22 @@ class MAILPN_Mailing {
     if (!empty($attachments)) {
       foreach ($attachments as $attachment_id) {
         $mailpn_attachments[] = get_attached_file($attachment_id);
+      }
+    }
+
+    // Allow external plugins to pass attachment file paths directly
+    if (!empty($atts['mailpn_attachments_paths'])) {
+      $external_paths = is_array($atts['mailpn_attachments_paths'])
+        ? $atts['mailpn_attachments_paths']
+        : (is_serialized($atts['mailpn_attachments_paths'])
+          ? unserialize($atts['mailpn_attachments_paths'])
+          : explode(',', $atts['mailpn_attachments_paths']));
+
+      foreach ($external_paths as $path) {
+        $path = trim($path);
+        if (!empty($path) && file_exists($path)) {
+          $mailpn_attachments[] = $path;
+        }
       }
     }
 
