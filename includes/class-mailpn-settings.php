@@ -74,21 +74,6 @@ class MAILPN_Settings {
         'label' => __('Custom reasons to receive email block', 'mailpn'),
         'placeholder' => __('Custom reasons to receive email block', 'mailpn'),
       ];
-      $mailpn_options['mailpn_max_width'] = [
-        'id' => 'mailpn_max_width',
-        'class' => 'mailpn-input mailpn-width-100-percent',
-        'input' => 'input',
-        'type' => 'number',
-        'label' => __('Email max width in pixels', 'mailpn'),
-        'placeholder' => __('Email max width in pixels', 'mailpn'),
-      ];
-      $mailpn_options['mailpn_links_color'] = [
-        'id' => 'mailpn_links_color',
-        'class' => 'mailpn-input mailpn-width-100-percent',
-        'input' => 'input',
-        'type' => 'color',
-        'label' => __('Color of the email links', 'mailpn'),
-      ];
     $mailpn_options['mailpn_section_contents_end'] = [
       'section' => 'end',
     ];
@@ -115,32 +100,6 @@ class MAILPN_Settings {
         'input' => 'html',
         'html_content' => '
           <div class="mailpn-design-preview-wrapper">
-            <h3 class="mailpn-preview-title">' . __('Live Preview', 'mailpn') . '</h3>
-            <div id="mailpn-design-preview-content" class="mailpn-preview-content">
-              <h1 id="preview-h1" class="mailpn-preview-h1">Título Principal (H1)</h1>
-              <h2 id="preview-h2" class="mailpn-preview-h2">Subtítulo Secundario (H2)</h2>
-              <h3 id="preview-h3" class="mailpn-preview-h3">Encabezado Terciario (H3)</h3>
-              <p id="preview-paragraph" class="mailpn-preview-p">
-                Este es un <strong>ejemplo de párrafo</strong> que muestra cómo se verá el texto del correo electrónico con los ajustes seleccionados.
-                Puedes personalizar la <em>fuente, tamaños, colores</em> y espaciado para que coincida con tu marca.
-              </p>
-              <p id="preview-paragraph-2" class="mailpn-preview-p">
-                Los cambios se reflejarán en <a href="#" class="mailpn-preview-link">tiempo real</a> mientras ajustas las opciones.
-              </p>
-              <ul id="preview-list" class="mailpn-preview-list">
-                <li>Elemento de lista 1</li>
-                <li>Elemento de lista 2</li>
-                <li>Elemento de lista 3</li>
-              </ul>
-              <div class="mailpn-preview-button-wrapper">
-                <a id="preview-button" href="#" class="mailpn-preview-button">
-                  Botón de Ejemplo
-                </a>
-              </div>
-              <div id="preview-footer" class="mailpn-preview-footer">
-                <small>Texto de pie de página de ejemplo</small>
-              </div>
-            </div>
             <div class="mailpn-preview-mode-buttons">
               <button type="button" id="mailpn-preview-desktop" class="button mailpn-preview-mode-btn active">
                 <i class="material-icons-outlined">computer</i>
@@ -150,6 +109,40 @@ class MAILPN_Settings {
                 <i class="material-icons-outlined">smartphone</i>
                 ' . __('Mobile', 'mailpn') . '
               </button>
+            </div>
+            <div id="mailpn-device-frame" class="mailpn-device-frame mailpn-device-desktop">
+              <div class="mailpn-device-topbar">
+                <span class="mailpn-device-dot"></span>
+                <span class="mailpn-device-dot"></span>
+                <span class="mailpn-device-dot"></span>
+              </div>
+              <div class="mailpn-device-screen">
+                <div id="mailpn-design-preview-content" class="mailpn-preview-content">
+                  <h1 id="preview-h1" class="mailpn-preview-h1">Título Principal (H1)</h1>
+                  <h2 id="preview-h2" class="mailpn-preview-h2">Subtítulo Secundario (H2)</h2>
+                  <h3 id="preview-h3" class="mailpn-preview-h3">Encabezado Terciario (H3)</h3>
+                  <p id="preview-paragraph" class="mailpn-preview-p">
+                    Este es un <strong>ejemplo de párrafo</strong> que muestra cómo se verá el texto del correo electrónico con los ajustes seleccionados.
+                    Puedes personalizar la <em>fuente, tamaños, colores</em> y espaciado para que coincida con tu marca.
+                  </p>
+                  <p id="preview-paragraph-2" class="mailpn-preview-p">
+                    Los cambios se reflejarán en <a href="#" class="mailpn-preview-link">tiempo real</a> mientras ajustas las opciones.
+                  </p>
+                  <ul id="preview-list" class="mailpn-preview-list">
+                    <li>Elemento de lista 1</li>
+                    <li>Elemento de lista 2</li>
+                    <li>Elemento de lista 3</li>
+                  </ul>
+                  <div class="mailpn-preview-button-wrapper">
+                    <a id="preview-button" href="#" class="mailpn-preview-button">
+                      Botón de Ejemplo
+                    </a>
+                  </div>
+                  <div id="preview-footer" class="mailpn-preview-footer">
+                    <small>Texto de pie de página de ejemplo</small>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         ',
@@ -179,6 +172,16 @@ class MAILPN_Settings {
         ],
         'default' => 'Arial, sans-serif',
       ];
+      $mailpn_options['mailpn_max_width'] = [
+        'id' => 'mailpn_max_width',
+        'class' => 'mailpn-input mailpn-width-100-percent',
+        'input' => 'input',
+        'type' => 'number',
+        'label' => __('Email max width (px)', 'mailpn'),
+        'description' => __('Maximum width for the email on large screens. The email will be responsive and adapt to smaller screens. Default: 700', 'mailpn'),
+        'placeholder' => '700',
+        'default' => '700',
+      ];
       $mailpn_options['mailpn_font_size_desktop'] = [
         'id' => 'mailpn_font_size_desktop',
         'class' => 'mailpn-input mailpn-width-100-percent',
@@ -188,7 +191,7 @@ class MAILPN_Settings {
         'description' => __('Base font size for desktop email viewing. Default: 14px', 'mailpn'),
         'placeholder' => '14',
         'default' => '14',
-        'min' => '10',
+        'min' => '8',
         'max' => '24',
         'step' => '1',
       ];
@@ -198,10 +201,10 @@ class MAILPN_Settings {
         'input' => 'input',
         'type' => 'range',
         'label' => __('Mobile Font Size (px)', 'mailpn'),
-        'description' => __('Base font size for mobile email viewing (screens under 600px). Default: 16px for better readability on small screens.', 'mailpn'),
-        'placeholder' => '16',
-        'default' => '16',
-        'min' => '12',
+        'description' => __('Base font size for mobile email viewing (screens under 600px). Default: 14px', 'mailpn'),
+        'placeholder' => '14',
+        'default' => '14',
+        'min' => '8',
         'max' => '24',
         'step' => '1',
       ];
@@ -211,10 +214,10 @@ class MAILPN_Settings {
         'input' => 'input',
         'type' => 'range',
         'label' => __('H1 Heading Size (px)', 'mailpn'),
-        'description' => __('Font size for H1 headings on mobile. Default: 26px', 'mailpn'),
-        'placeholder' => '26',
-        'default' => '26',
-        'min' => '16',
+        'description' => __('Font size for H1 headings. Default: 22px', 'mailpn'),
+        'placeholder' => '22',
+        'default' => '22',
+        'min' => '10',
         'max' => '48',
         'step' => '1',
       ];
@@ -224,10 +227,10 @@ class MAILPN_Settings {
         'input' => 'input',
         'type' => 'range',
         'label' => __('H2 Heading Size (px)', 'mailpn'),
-        'description' => __('Font size for H2 headings on mobile. Default: 22px', 'mailpn'),
-        'placeholder' => '22',
-        'default' => '22',
-        'min' => '14',
+        'description' => __('Font size for H2 headings. Default: 18px', 'mailpn'),
+        'placeholder' => '18',
+        'default' => '18',
+        'min' => '10',
         'max' => '40',
         'step' => '1',
       ];
@@ -237,10 +240,10 @@ class MAILPN_Settings {
         'input' => 'input',
         'type' => 'range',
         'label' => __('H3 Heading Size (px)', 'mailpn'),
-        'description' => __('Font size for H3 headings on mobile. Default: 20px', 'mailpn'),
-        'placeholder' => '20',
-        'default' => '20',
-        'min' => '12',
+        'description' => __('Font size for H3 headings. Default: 16px', 'mailpn'),
+        'placeholder' => '16',
+        'default' => '16',
+        'min' => '10',
         'max' => '36',
         'step' => '1',
       ];
@@ -250,9 +253,9 @@ class MAILPN_Settings {
         'input' => 'input',
         'type' => 'text',
         'label' => __('Line Height', 'mailpn'),
-        'description' => __('Line height for email content. Use decimals like 1.6 or percentages like 160%. Default: 1.6', 'mailpn'),
-        'placeholder' => '1.6',
-        'default' => '1.6',
+        'description' => __('Line height for email content. Use decimals like 1.4 or percentages like 140%. Default: 1.4', 'mailpn'),
+        'placeholder' => '1.4',
+        'default' => '1.4',
       ];
       $mailpn_options['mailpn_subsection_typography_end'] = [
         'section' => 'end',
@@ -281,15 +284,25 @@ class MAILPN_Settings {
         'placeholder' => '#333333',
         'default' => '#333333',
       ];
+      $mailpn_options['mailpn_links_color'] = [
+        'id' => 'mailpn_links_color',
+        'class' => 'mailpn-input mailpn-width-100-percent',
+        'input' => 'input',
+        'type' => 'color',
+        'label' => __('Link Color', 'mailpn'),
+        'description' => __('Color for links in emails. Default: #2271b1', 'mailpn'),
+        'placeholder' => '#2271b1',
+        'default' => '#2271b1',
+      ];
       $mailpn_options['mailpn_button_bg_color'] = [
         'id' => 'mailpn_button_bg_color',
         'class' => 'mailpn-input mailpn-width-100-percent',
         'input' => 'input',
         'type' => 'color',
         'label' => __('Button Background Color', 'mailpn'),
-        'description' => __('Background color for buttons in emails. Default: #ffffff (white)', 'mailpn'),
-        'placeholder' => '#ffffff',
-        'default' => '#ffffff',
+        'description' => __('Background color for buttons in emails. Default: #2271b1', 'mailpn'),
+        'placeholder' => '#2271b1',
+        'default' => '#2271b1',
       ];
       $mailpn_options['mailpn_button_text_color'] = [
         'id' => 'mailpn_button_text_color',
@@ -613,6 +626,26 @@ class MAILPN_Settings {
           'description' => __('Set the maximum number of consecutive errors allowed before stopping the sending process. When this limit is reached, the queue will be paused and an email will be sent to the administrator. Default: 10, Minimum: 1.', 'mailpn'),
           'default' => '10',
         ];
+  $mailpn_options['mailpn_auto_delete_records'] = [
+      'id' => 'mailpn_auto_delete_records',
+      'class' => 'mailpn-input mailpn-width-100-percent',
+      'input' => 'input',
+      'type' => 'checkbox',
+      'parent' => 'this',
+      'label' => __('Auto-delete old mail records', 'mailpn'),
+      'description' => __('Automatically delete mail records older than the specified number of days to save database space.', 'mailpn'),
+    ];
+    $mailpn_options['mailpn_auto_delete_records_days'] = [
+      'id' => 'mailpn_auto_delete_records_days',
+      'class' => 'mailpn-input mailpn-width-100-percent',
+      'input' => 'input',
+      'type' => 'number',
+      'parent' => 'mailpn_auto_delete_records',
+      'parent_option' => 'on',
+      'label' => __('Days to keep mail records', 'mailpn'),
+      'description' => __('Mail records older than this number of days will be permanently deleted. Minimum: 30 days.', 'mailpn'),
+      'default' => '365',
+    ];
   $mailpn_options['mailpn_section_mechanics_end'] = [
       'section' => 'end',
     ];

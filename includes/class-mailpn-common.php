@@ -225,6 +225,7 @@ class MAILPN_Common
 			'batch' => esc_html(__('Batch', 'mailpn')),
 			'resume_at' => esc_html(__('Will resume at', 'mailpn')),
 			'sending_tomorrow' => esc_html(__('Sending tomorrow', 'mailpn')),
+			'scheduled_for' => esc_html(__('Scheduled for', 'mailpn')),
 			'error_details' => esc_html(__('Error Details', 'mailpn')),
 			'recipient' => esc_html(__('Recipient', 'mailpn')),
 			'template' => esc_html(__('Template', 'mailpn')),

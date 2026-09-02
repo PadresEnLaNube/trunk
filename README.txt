@@ -4,7 +4,7 @@ Donate link: https://padresenlanube.com/
 Tags: email, mailing, notifications, sender, mail address
 Requires at least: 3.0
 Tested up to: 7.0
-Stable tag: 1.0.85
+Stable tag: 1.0.90
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 Effortlessly manage your email campaigns. Schedule, send, and track emails directly from your dashboard to engage your audience like never before.
@@ -21,7 +21,7 @@ Transform your WordPress site into a powerful email management hub with our intu
 
 * **Email Queue System**: Intelligent email queue management that processes emails in controlled batches. Configure sending rates (emails per 10 minutes and daily limits) to prevent server overload and ensure optimal deliverability. Automatic queue pausing when daily limits are reached, with automatic reset after 24 hours.
 
-* **Scheduled Email Delivery**: Schedule emails to be sent at specific times in the future. Perfect for welcome emails, follow-ups, and time-sensitive campaigns. Includes delayed welcome email functionality with configurable delays.
+* **Scheduled Email Delivery**: Schedule emails to be sent at specific times in the future. Perfect for welcome emails, follow-ups, and time-sensitive campaigns. Includes delayed welcome email functionality with configurable delays. Time window enforcement prevents emails from being sent outside their configured date range, with automatic queue expiration.
 
 * **Email Tracking & Analytics**: Comprehensive tracking system including:
   - **Open Tracking**: Optional tracking of email opens using invisible tracking pixels. Monitor when recipients open your emails with timestamps. Can be disabled to prioritize deliverability over tracking.
@@ -72,6 +72,7 @@ Transform your WordPress site into a powerful email management hub with our intu
   - Detailed error logging for failed sends
   - Email content stored in both HTML and plain text formats
   - Server information and IP tracking
+  - Optional automatic deletion of records older than a configurable number of days to prevent database bloat
 
 * **Dashboard & Statistics**: Comprehensive dashboard providing:
   - Recent sent emails count (last 7 days)
@@ -106,7 +107,7 @@ Transform your WordPress site into a powerful email management hub with our intu
     - Custom colors for background and text
   - **Live Preview System**:
     - Real-time preview of design changes
-    - Desktop and mobile view toggle
+    - Desktop and mobile view toggle with device frame simulation (desktop traffic light dots, mobile notch)
     - Sample content with all formatting elements (headings, paragraphs, lists, buttons)
     - Instant visual feedback while adjusting settings
   - **Design Consistency**:
@@ -138,6 +139,7 @@ Transform your WordPress site into a powerful email management hub with our intu
   - Exact error count display with singular/plural formatting
   - Detailed error view per record: error message, recipient, subject, headers, server IP, user info
   - Distinction between validation skips and actual send failures for accurate error counting
+  - Automatic mail send diagnostics reporting SMTP configuration, sendmail_path availability, and sender email issues
 
 * **Role-Based Permissions**: Fine-grained access control:
   - Custom capabilities for email management
@@ -187,6 +189,7 @@ Transform your WordPress site into a powerful email management hub with our intu
   - Weekly maintenance tasks
   - Scheduled email processing
   - WooCommerce automated email processing
+  - Optional auto-deletion of old mail records to prevent database bloat
 
 * **Onboarding Tutorial**: Interactive 5-step tutorial overlay for first-time users covering Email Contents, Email Design, SMTP Configuration, and key features. Includes progress bar, skip/back/next navigation, and section highlighting.
 
@@ -308,7 +311,7 @@ This section provides comprehensive documentation for developers who want to int
 === Plugin Structure ===
 
 * **Main File**: `mailpn.php`
-* **Version**: 1.0.85
+* **Version**: 1.0.90
 * **Constants**: `MAILPN_VERSION`, `MAILPN_DIR`, `MAILPN_URL`, `MAILPN_CPTS`
 * **Custom Post Types**: `mailpn_mail` (emails), `mailpn_rec` (records)
 
@@ -408,12 +411,17 @@ Access plugin settings using WordPress `get_option()`:
 * `mailpn_line_height` - Line height
 * `mailpn_background_color` - Email background color
 * `mailpn_text_color` - Email text color
-* `mailpn_button_bg_color` - Button background color
+* `mailpn_links_color` - Link color in emails (default: #2271b1)
+* `mailpn_button_bg_color` - Button background color (falls back to links color when empty or white)
 * `mailpn_button_text_color` - Button text color
 * `mailpn_button_border_radius` - Button border radius (px)
 * `mailpn_header_bg_color` - Header background color
 * `mailpn_footer_bg_color` - Footer background color
 * `mailpn_footer_text_color` - Footer text color
+
+==== Record Management ====
+* `mailpn_auto_delete_records` - Enable auto-deletion of old mail records ('on'/'off')
+* `mailpn_auto_delete_records_days` - Days to keep mail records before auto-deletion (default: 365, minimum: 30)
 
 ==== WooCommerce ====
 * `mailpn_wc_emails_wrapper` - Wrap WooCommerce emails with MailPN template ('on'/'off')
@@ -577,6 +585,35 @@ For developer support, visit the plugin's support forum or contact: info@padrese
 
 
 == Changelog ==
+
+= 1.0.90 =
+
+- Replace hardcoded CSS values in the email template with token placeholders for reliable design setting injection
+- Inject email template CSS into a style tag in the HTML head instead of using wp_add_inline_style
+- Add time window enforcement for email templates: skip sending before start date or after end date
+- Enforce time window in queue processing: hold templates until their start date, expire and remove templates past their end date
+- Show scheduled start time in the queue status popup for templates with a future time window, with a separate Scheduled section
+- Add mailpn_build_mail_diagnostic() with detailed send failure diagnostics: SMTP config, sendmail_path, and sender email checks
+- Replace generic SMTP error messages with dynamic diagnostic output in test email and send handlers
+- Store skip reasons when an email is not sent, for AJAX handler access
+- Reorder send condition to validate recipient email address before checking USERSPN notification status
+- Add auto-delete old mail records: daily cron removes mailpn_rec posts older than configurable days (min 30, default 365), up to 500 per run
+- Add mailpn_auto_delete_records and mailpn_auto_delete_records_days settings under Mechanics
+- Remove all mailpn_cron_debug_log get_option/update_option calls, eliminating unbounded option growth and excessive database writes
+- Add device frame to design live preview: desktop frame with traffic light dots, mobile frame with notch bar, animated transitions between modes
+- Move preview mode buttons above the preview panel
+- Move mailpn_max_width and mailpn_links_color settings from general to design section, add description and placeholder to mailpn_max_width
+- Update default design values: mobile font size 16 to 14, H1 26 to 22, H2 22 to 18, H3 20 to 16, line height 1.6 to 1.4, button background #ffffff to #2271b1
+- Fall back to links color for button background when empty or white, preventing invisible buttons
+- Lower minimum values for font size and heading size range inputs
+- Fix Gutenberg button color extraction using negative lookbehind regex to avoid matching color inside background-color
+- Merge custom Gutenberg button styles by replacing matching properties instead of appending
+- Add responsive improvements to email template: img max-width, td word-wrap, !important on media queries, header/footer image max-width, viewport initial-scale, content cell padding
+- Remove hardcoded width attribute from main email table, use CSS max-width only
+- Remove decorative borders from email header and footer
+- Add link color rule to email template CSS
+- Add scheduled_for i18n string
+- Remove CSS rule hiding #header/#footer in .mailpn-body context
 
 = 1.0.85 =
 

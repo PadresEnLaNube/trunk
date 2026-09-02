@@ -530,6 +530,9 @@
         popup_content += '<li>';
         popup_content += '<strong>' + template.title + '</strong>';
         popup_content += '<span class="mailpn-template-pending">' + template.pending + ' ' + (mailpn_i18n.pending || 'pending') + '</span>';
+        if (template.scheduled_start) {
+          popup_content += '<span class="mailpn-template-scheduled"><i class="material-icons-outlined mailpn-icon-16-middle">schedule</i> ' + (mailpn_i18n.scheduled_for || 'Scheduled for') + ' ' + template.scheduled_start + '</span>';
+        }
         popup_content += '</li>';
       });
       popup_content += '</ul>';
@@ -540,12 +543,20 @@
     if (result.next_batch.length > 0) {
       popup_content += '<div class="mailpn-queue-section">';
 
-      // Group by date (today vs tomorrow) and then by batch
+      // Group by date (today vs tomorrow vs scheduled) and then by batch
       var todayBatches = {};
       var tomorrowBatches = {};
+      var scheduledBatches = {};
 
       result.next_batch.forEach(function(item) {
-        var batches = item.sends_tomorrow ? tomorrowBatches : todayBatches;
+        var batches;
+        if (item.is_scheduled) {
+          batches = scheduledBatches;
+        } else if (item.sends_tomorrow) {
+          batches = tomorrowBatches;
+        } else {
+          batches = todayBatches;
+        }
         var key = item.estimated_send_formatted;
 
         if (!batches[key]) {
@@ -553,7 +564,9 @@
             items: [],
             time: item.estimated_send_formatted,
             batch_number: item.batch_number,
-            sends_tomorrow: item.sends_tomorrow
+            sends_tomorrow: item.sends_tomorrow,
+            is_scheduled: item.is_scheduled,
+            scheduled_start: item.scheduled_start
           };
         }
         batches[key].items.push(item);
@@ -609,6 +622,40 @@
           popup_content += '<span>' + batchLabel + '</span>';
           popup_content += '<span class="mailpn-batch-time">';
           popup_content += '<i class="material-icons-outlined">schedule</i> ';
+          popup_content += batch.time;
+          popup_content += '</span>';
+          popup_content += '</h4>';
+
+          popup_content += '<ul class="mailpn-queue-pending-list">';
+          batch.items.forEach(function(item) {
+            popup_content += '<li>';
+            popup_content += '<div class="mailpn-queue-item-info">';
+            popup_content += '<strong>#' + item.user_id + ' ' + item.name + '</strong>';
+            popup_content += '<span class="mailpn-user-email">' + item.email + '</span>';
+            popup_content += '<span class="mailpn-template-tag">' + item.template_title + '</span>';
+            popup_content += '</div>';
+            popup_content += '<button class="mailpn-btn-remove-from-queue" data-mail-id="' + item.template_id + '" data-user-id="' + item.user_id + '">';
+            popup_content += '<i class="material-icons-outlined">delete</i>';
+            popup_content += '</button>';
+            popup_content += '</li>';
+          });
+          popup_content += '</ul>';
+          popup_content += '</div>';
+        });
+      }
+
+      // Display scheduled batches (templates with a future start time)
+      var scheduledKeys = Object.keys(scheduledBatches);
+      if (scheduledKeys.length > 0) {
+        scheduledKeys.forEach(function(key) {
+          var batch = scheduledBatches[key];
+          var batchLabel = (mailpn_i18n.scheduled_for || 'Scheduled for') + ' ' + batch.scheduled_start;
+
+          popup_content += '<div class="mailpn-batch-group mailpn-batch-scheduled">';
+          popup_content += '<h4 class="mailpn-batch-title">';
+          popup_content += '<span>' + batchLabel + '</span>';
+          popup_content += '<span class="mailpn-batch-time">';
+          popup_content += '<i class="material-icons-outlined">event</i> ';
           popup_content += batch.time;
           popup_content += '</span>';
           popup_content += '</h4>';

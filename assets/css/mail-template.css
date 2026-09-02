@@ -1,46 +1,60 @@
 /* MAILPN Email Template Styles */
+/* Values in {{TOKENS}} are replaced by mailpn_template() before injection */
 
 /* Basic email template styles */
 .mailpn-email-template {
-    font-family: Arial, sans-serif;
+    font-family: {{FONT_FAMILY}};
     max-width: 600px;
     margin: 0 auto;
-    background-color: #ffffff;
+    background-color: {{BG_COLOR}};
 }
 
 .mailpn-header {
-    background-color: #f8f9fa;
+    background-color: {{HEADER_BG}};
     padding: 20px;
     text-align: center;
-    border-bottom: 1px solid #e9ecef;
 }
 
 .mailpn-content {
     padding: 20px;
-    line-height: 1.6;
+    line-height: {{LINE_HEIGHT}};
 }
 
 .mailpn-footer {
-    background-color: #f8f9fa;
+    background-color: {{FOOTER_BG}};
     padding: 20px;
     text-align: center;
-    border-top: 1px solid #e9ecef;
     font-size: 12px;
-    color: #6c757d;
+    color: {{FOOTER_TEXT}};
+}
+
+/* Responsive base rules */
+.mailpn-table-main {
+    width: 100%;
+}
+
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+td {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .mailpn-button {
     display: inline-block;
     padding: 10px 20px;
-    background-color: #86b3ac;
-    color: #ffffff;
+    background-color: {{BUTTON_BG}};
+    color: {{BUTTON_TEXT}};
     text-decoration: none;
-    border-radius: 4px;
+    border-radius: {{BUTTON_RADIUS}};
     margin: 10px 0;
 }
 
 .mailpn-button:hover {
-    background-color: #6a9a94;
+    opacity: 0.9;
 }
 
 /* WordPress Gutenberg button styles for emails */
@@ -53,10 +67,10 @@
 .wp-element-button {
     display: inline-block;
     padding: 12px 24px;
-    background-color: #86b3ac;
-    color: #ffffff !important;
+    background-color: {{BUTTON_BG}};
+    color: {{BUTTON_TEXT}} !important;
     text-decoration: none;
-    border-radius: 4px;
+    border-radius: {{BUTTON_RADIUS}};
     font-weight: 600;
     font-size: 16px;
     line-height: 1.5;
@@ -66,82 +80,107 @@
 
 .wp-block-button__link:hover,
 .wp-element-button:hover {
-    background-color: #6a9a94;
-    color: #ffffff !important;
+    opacity: 0.9;
+    color: {{BUTTON_TEXT}} !important;
 }
 
 /* Support for button color variations */
 .wp-block-button.is-style-fill .wp-block-button__link {
-    background-color: #86b3ac;
-    color: #ffffff !important;
+    background-color: {{BUTTON_BG}};
+    color: {{BUTTON_TEXT}} !important;
 }
 
 .wp-block-button.is-style-outline .wp-block-button__link {
     background-color: transparent;
-    border: 2px solid #86b3ac;
-    color: #86b3ac !important;
+    border: 2px solid {{BUTTON_BG}};
+    color: {{BUTTON_BG}} !important;
+}
+
+/* Link color */
+a {
+    color: {{MAIN_COLOR}};
 }
 
 /* Responsive design */
-@media (max-width: 600px) {
+@media screen and (max-width: 600px) {
     .mailpn-email-template {
-        width: 100%;
-        font-size: 16px;
+        width: 100% !important;
+    }
+
+    .mailpn-table-main {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    body {
+        font-size: {{FONT_SIZE_MOBILE}}px !important;
+        width: 100% !important;
+        min-width: 100% !important;
     }
 
     .mailpn-content {
-        padding: 15px;
-        font-size: 16px;
-        line-height: 1.6;
+        padding: 15px !important;
+        font-size: {{FONT_SIZE_MOBILE}}px !important;
+        line-height: {{LINE_HEIGHT}} !important;
     }
 
     .mailpn-content p {
-        font-size: 16px;
-        line-height: 1.6;
+        font-size: {{FONT_SIZE_MOBILE}}px !important;
+        line-height: {{LINE_HEIGHT}} !important;
         margin-bottom: 12px;
     }
 
     .mailpn-content h1 {
-        font-size: 26px;
-        line-height: 1.3;
+        font-size: {{HEADING_H1}}px !important;
+        line-height: 1.3 !important;
     }
 
     .mailpn-content h2 {
-        font-size: 22px;
-        line-height: 1.3;
+        font-size: {{HEADING_H2}}px !important;
+        line-height: 1.3 !important;
     }
 
     .mailpn-content h3 {
-        font-size: 20px;
-        line-height: 1.3;
+        font-size: {{HEADING_H3}}px !important;
+        line-height: 1.3 !important;
     }
 
     .mailpn-content h4,
     .mailpn-content h5,
     .mailpn-content h6 {
-        font-size: 18px;
-        line-height: 1.3;
+        font-size: {{HEADING_H3}}px !important;
+        line-height: 1.3 !important;
     }
 
     .mailpn-content li {
-        font-size: 16px;
-        line-height: 1.6;
+        font-size: {{FONT_SIZE_MOBILE}}px !important;
+        line-height: {{LINE_HEIGHT}} !important;
     }
 
     .mailpn-header {
-        font-size: 16px;
-        padding: 15px;
+        font-size: {{FONT_SIZE_MOBILE}}px !important;
+        padding: 15px !important;
     }
 
     .mailpn-footer {
-        font-size: 14px;
-        padding: 15px;
+        font-size: 14px !important;
+        padding: 15px !important;
     }
 
     .wp-block-button__link,
     .wp-element-button,
     .mailpn-button {
-        font-size: 16px;
-        padding: 12px 20px;
+        font-size: {{FONT_SIZE_MOBILE}}px !important;
+        padding: 12px 20px !important;
+    }
+
+    img {
+        max-width: 100% !important;
+        height: auto !important;
+    }
+
+    table {
+        width: 100% !important;
     }
 }

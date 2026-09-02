@@ -448,7 +448,7 @@ class MAILPN_Ajax {
 
             // If no specific error, add diagnostic information
             if ($error_message === esc_html__('Failed to send test email', 'mailpn')) {
-              $error_message = esc_html__('Email sending failed', 'mailpn') . ': ' . esc_html__('Check SMTP settings or server mail configuration', 'mailpn');
+              $error_message = esc_html__('Email sending failed', 'mailpn') . ': ' . self::mailpn_build_mail_diagnostic();
             }
 
             // Log the error
@@ -623,7 +623,7 @@ class MAILPN_Ajax {
 
             // If no specific error, add diagnostic information
             if ($error_message === esc_html__('Failed to send test email', 'mailpn')) {
-              $error_message = esc_html__('Email sending failed', 'mailpn') . ': ' . esc_html__('Check SMTP settings or server mail configuration', 'mailpn');
+              $error_message = esc_html__('Email sending failed', 'mailpn') . ': ' . self::mailpn_build_mail_diagnostic();
             }
 
             // Log the error with full details
@@ -1038,17 +1038,42 @@ class MAILPN_Ajax {
           // Calculate total pending across all templates
           $total_pending = 0;
           $templates_in_queue = [];
+          $templates_time_window = []; // Time window info indexed by mail_id
           foreach ($queue_data as $mail_id => $users) {
             if (!empty($users)) {
               $count = count($users);
               $total_pending += $count;
               $template = get_post($mail_id);
               if ($template) {
-                $templates_in_queue[] = [
+                $template_data = [
                   'id' => $mail_id,
                   'title' => $template->post_title,
                   'pending' => $count,
                 ];
+
+                // Check time window for this template
+                if (get_post_meta($mail_id, 'mailpn_time', true) === 'on') {
+                  $date_start = get_post_meta($mail_id, 'mailpn_date_start', true);
+                  $time_start = get_post_meta($mail_id, 'mailpn_time_start', true);
+
+                  if (!empty($date_start)) {
+                    $start_string = $date_start . (!empty($time_start) ? ' ' . $time_start : ' 00:00');
+                    $start_timestamp = strtotime($start_string);
+                    $now = current_time('timestamp');
+
+                    if ($start_timestamp && $now < $start_timestamp) {
+                      $formatted_start = date_i18n(get_option('date_format') . ' ' . get_option('time_format'), $start_timestamp);
+                      $template_data['scheduled_start'] = $formatted_start;
+                      $templates_time_window[$mail_id] = [
+                        'is_scheduled' => true,
+                        'scheduled_start' => $formatted_start,
+                        'scheduled_start_timestamp' => $start_timestamp,
+                      ];
+                    }
+                  }
+                }
+
+                $templates_in_queue[] = $template_data;
               }
             }
           }
@@ -1118,7 +1143,7 @@ class MAILPN_Ajax {
                   }
                 }
 
-                $next_batch[] = [
+                $batch_item = [
                   'user_id' => $user_id,
                   'name' => trim($user->first_name . ' ' . $user->last_name),
                   'email' => $user->user_email,
@@ -1128,7 +1153,20 @@ class MAILPN_Ajax {
                   'estimated_send_formatted' => date_i18n(get_option('date_format') . ' ' . get_option('time_format'), $estimated_timestamp),
                   'batch_number' => $batch_number,
                   'sends_tomorrow' => $is_tomorrow,
+                  'is_scheduled' => false,
+                  'scheduled_start' => '',
                 ];
+
+                // Override with time window info if this template is scheduled for the future
+                if (!empty($templates_time_window[$mail_id])) {
+                  $tw = $templates_time_window[$mail_id];
+                  $batch_item['is_scheduled'] = true;
+                  $batch_item['scheduled_start'] = $tw['scheduled_start'];
+                  $batch_item['estimated_send_formatted'] = $tw['scheduled_start'];
+                  $batch_item['sends_tomorrow'] = false;
+                }
+
+                $next_batch[] = $batch_item;
                 $batch_count++;
               }
             }
@@ -1626,7 +1664,7 @@ class MAILPN_Ajax {
           } else {
             echo wp_json_encode([
               'error_key' => 'send_failed',
-              'error_content' => __('Failed to send test email. Check your email configuration.', 'mailpn'),
+              'error_content' => esc_html__('Email sending failed', 'mailpn') . ': ' . self::mailpn_build_mail_diagnostic(),
             ]);
           }
           exit;
@@ -1989,6 +2027,38 @@ class MAILPN_Ajax {
    * @param array $additional_data Additional data to log
    * @since    1.0.55
    */
+  private static function mailpn_build_mail_diagnostic() {
+    $diagnostics = [];
+    $smtp_enabled = get_option('mailpn_smtp_enabled') === 'on';
+
+    if ($smtp_enabled) {
+      $issues = [];
+      if (empty(get_option('mailpn_smtp_host'))) $issues[] = esc_html__('Host is empty', 'mailpn');
+      if (empty(get_option('mailpn_smtp_port'))) $issues[] = esc_html__('Port is empty', 'mailpn');
+      if (get_option('mailpn_smtp_auth') === 'on') {
+        if (empty(get_option('mailpn_smtp_username'))) $issues[] = esc_html__('Username is empty', 'mailpn');
+        if (empty(get_option('mailpn_smtp_password'))) $issues[] = esc_html__('Password is empty', 'mailpn');
+      }
+      if (!empty($issues)) {
+        $diagnostics[] = esc_html__('SMTP is enabled but has configuration issues', 'mailpn') . ': ' . implode(', ', $issues);
+      } else {
+        $diagnostics[] = esc_html__('SMTP is enabled and configured. The server may have rejected the connection or the credentials may be incorrect', 'mailpn');
+      }
+    } else {
+      $diagnostics[] = esc_html__('SMTP is disabled, using server PHP mail()', 'mailpn');
+      if (!ini_get('sendmail_path')) {
+        $diagnostics[] = esc_html__('sendmail_path is not configured on this server — PHP mail() may not work', 'mailpn');
+      }
+    }
+
+    $from_email = get_option('mailpn_from_email');
+    if (empty($from_email)) {
+      $diagnostics[] = esc_html__('Sender email (From) is not configured in plugin settings', 'mailpn');
+    }
+
+    return implode('. ', $diagnostics);
+  }
+
   private static function mailpn_log_email_error($context, $error_message, $additional_data = []) {
     $log_entry = [
       'timestamp' => current_time('mysql'),

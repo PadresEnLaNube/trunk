@@ -181,6 +181,41 @@ class MAILPN_Mailing {
       }
     }
 
+    // Time window check (skip for system emails)
+    if (!$is_system_email && !empty($mailpn_id) && get_post_meta($mailpn_id, 'mailpn_time', true) === 'on') {
+      $mailpn_now = current_time('timestamp');
+
+      $date_start = get_post_meta($mailpn_id, 'mailpn_date_start', true);
+      $time_start = get_post_meta($mailpn_id, 'mailpn_time_start', true);
+      $date_end   = get_post_meta($mailpn_id, 'mailpn_date_end', true);
+      $time_end   = get_post_meta($mailpn_id, 'mailpn_time_end', true);
+
+      // Check start threshold: if a start date is set, don't send before it
+      if (!empty($date_start)) {
+        $start_string = $date_start . (!empty($time_start) ? ' ' . $time_start : ' 00:00');
+        $start_timestamp = strtotime($start_string);
+        if ($start_timestamp && $mailpn_now < $start_timestamp) {
+          if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log(sprintf('MAILPN: Email template ID %d skipped - before time window start (%s)', $mailpn_id, $start_string));
+          }
+          return 'skipped';
+        }
+      }
+
+      // Check end threshold: if an end date is set, don't send after it
+      // If no end date is set, emails are sent indefinitely after the start
+      if (!empty($date_end)) {
+        $end_string = $date_end . (!empty($time_end) ? ' ' . $time_end : ' 23:59');
+        $end_timestamp = strtotime($end_string);
+        if ($end_timestamp && $mailpn_now > $end_timestamp) {
+          if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log(sprintf('MAILPN: Email template ID %d skipped - after time window end (%s)', $mailpn_id, $end_string));
+          }
+          return 'skipped';
+        }
+      }
+    }
+
     $mailpn_subject = !empty($mailpn_subject) ? $mailpn_subject : (!empty($mailpn_id) ? esc_html(get_the_title($mailpn_id)) : esc_html(__('Mail subject', 'mailpn')));
 
     $mailpn_content = !empty($mailpn_id) ? get_post($mailpn_id)->post_content : $mailpn_content;
@@ -277,9 +312,21 @@ class MAILPN_Mailing {
 
     if (filter_var($mailpn_user_to, FILTER_VALIDATE_EMAIL)) {
       $mailpn_result = wp_mail($mailpn_user_to, $mailpn_subject, $mailpn_message, $headers, $mailpn_attachments);
-    }elseif (class_exists('USERSPN') && (get_user_meta($mailpn_user_to, 'userspn_notifications', true) == 'on' || in_array($mailpn_type, ['email_verify_code'])) && !empty($user_email) && !(self::mailpn_once_mailed($mailpn_id, $mailpn_user_to, $mailpn_once, $mailpn_type))) {
+    }elseif (!empty($user_email) && !(self::mailpn_once_mailed($mailpn_id, $mailpn_user_to, $mailpn_once, $mailpn_type)) && (!class_exists('USERSPN') || get_user_meta($mailpn_user_to, 'userspn_notifications', true) == 'on' || in_array($mailpn_type, ['email_verify_code']))) {
       $mailpn_result = wp_mail($user_email, $mailpn_subject, $mailpn_message, $headers, $mailpn_attachments);
     }else{
+      // Build a diagnostic reason for why the email was not sent
+      $skip_reasons = [];
+      if (empty($user_email)) {
+        $skip_reasons[] = 'No email address found for user ID ' . $mailpn_user_to;
+      }
+      if (class_exists('USERSPN') && get_user_meta($mailpn_user_to, 'userspn_notifications', true) != 'on' && !in_array($mailpn_type, ['email_verify_code'])) {
+        $skip_reasons[] = 'User has email notifications disabled';
+      }
+      if (!empty($mailpn_id) && self::mailpn_once_mailed($mailpn_id, $mailpn_user_to, $mailpn_once, $mailpn_type)) {
+        $skip_reasons[] = 'Email already sent to this user (once-only rule)';
+      }
+
       $wph_meta_value = [
         'mailpn_user_to' => $mailpn_user_to,
         'user_email' => $user_email,
@@ -287,6 +334,14 @@ class MAILPN_Mailing {
         'mailpn_subject' => $mailpn_subject,
         'notifications' => get_user_meta($mailpn_user_to, 'userspn_notifications', true),
         'once' => !(self::mailpn_once_mailed($mailpn_id, $mailpn_user_to, $mailpn_once, $mailpn_type)),
+        'skip_reasons' => $skip_reasons,
+      ];
+
+      // Store error details in global for AJAX handlers
+      $GLOBALS['mailpn_last_error'] = [
+        'message' => !empty($skip_reasons) ? implode('. ', $skip_reasons) : 'Email could not be sent: recipient validation failed',
+        'details' => $skip_reasons,
+        'timestamp' => current_time('mysql'),
       ];
 
       $unique_id = strtotime('now') . '-' . $mailpn_user_to;
@@ -300,7 +355,7 @@ class MAILPN_Mailing {
           update_option('mailpn_error', $wph_option_new);
         }
       }
-        
+
       return false;
     }
     
@@ -587,14 +642,18 @@ class MAILPN_Mailing {
       return $content;
     }
 
-    // Get main color from settings
-    $main_color = get_option('mailpn_links_color');
-    if (empty($main_color)) {
-      $main_color = '#86b3ac'; // Default color if not set
+    // Get button settings
+    $main_color = get_option('mailpn_links_color', '#2271b1');
+    $button_bg = get_option('mailpn_button_bg_color');
+    // Fall back to main color when button bg is empty or default white (invisible on white background)
+    if (empty($button_bg) || $button_bg === '#ffffff') {
+      $button_bg = $main_color;
     }
+    $button_text = get_option('mailpn_button_text_color', '#ffffff');
+    $button_radius = get_option('mailpn_button_border_radius', '4');
 
     // WordPress button styles - compatible with most email clients
-    $button_styles = 'display:inline-block;padding:12px 24px;margin:10px 5px;background-color:' . esc_attr($main_color) . ';color:#ffffff !important;text-decoration:none;border-radius:4px;font-weight:600;font-size:16px;line-height:1.5;text-align:center;border:none;';
+    $button_styles = 'display:inline-block;padding:12px 24px;margin:10px 5px;background-color:' . esc_attr($button_bg) . ';color:' . esc_attr($button_text) . ' !important;text-decoration:none;border-radius:' . esc_attr($button_radius) . 'px;font-weight:600;font-size:16px;line-height:1.5;text-align:center;border:none;';
     $button_wrapper_styles = 'text-align:center;margin:20px 0;';
 
     // Process wp-block-button (Gutenberg button block)
@@ -613,16 +672,22 @@ class MAILPN_Mailing {
             $href = $href_matches[1];
           }
 
-          // Check for custom background color
-          $custom_bg = '';
-          if (preg_match('/background-color:\s*([^;"]+)/i', $link_attrs, $bg_matches)) {
-            $custom_bg = 'background-color:' . $bg_matches[1] . ';';
+          // Extract style attribute for reliable color detection
+          $style_value = '';
+          if (preg_match('/style=["\']([^"\']*)["\']/', $link_attrs, $style_matches)) {
+            $style_value = $style_matches[1];
           }
 
-          // Check for custom text color
+          // Check for custom background color in style
+          $custom_bg = '';
+          if (preg_match('/background-color:\s*([^;"]+)/i', $style_value, $bg_matches)) {
+            $custom_bg = 'background-color:' . trim($bg_matches[1]) . ';';
+          }
+
+          // Check for custom text color in style (negative lookbehind avoids matching inside background-color)
           $custom_color = '';
-          if (preg_match('/color:\s*([^;"]+)/i', $link_attrs, $color_matches)) {
-            $custom_color = 'color:' . $color_matches[1] . ' !important;';
+          if (preg_match('/(?:^|;)\s*color:\s*([^;"]+)/i', $style_value, $color_matches)) {
+            $custom_color = 'color:' . trim($color_matches[1]) . ' !important;';
           }
 
           // Merge custom styles with default
@@ -631,7 +696,7 @@ class MAILPN_Mailing {
             $final_styles = preg_replace('/background-color:[^;]+;/', $custom_bg, $final_styles);
           }
           if ($custom_color) {
-            $final_styles = preg_replace('/color:[^;]+;/', $custom_color, $final_styles);
+            $final_styles = preg_replace('/(?<![a-z-])color:[^;]+;/', $custom_color, $final_styles);
           }
 
           return '<div style="' . $button_wrapper_styles . '"><a href="' . esc_url($href) . '" style="' . $final_styles . '">' . $link_text . '</a></div>';
@@ -654,13 +719,21 @@ class MAILPN_Mailing {
           $href = $href_matches[1];
         }
 
-        // Check for custom styles
-        $custom_styles = '';
+        // Extract style attribute and merge custom colors with defaults
+        $final_styles = $button_styles;
         if (preg_match('/style=["\']([^"\']*)["\']/', $full_tag, $style_matches)) {
-          $custom_styles = $style_matches[1];
+          $style_value = $style_matches[1];
+          // Override background-color if custom
+          if (preg_match('/background-color:\s*([^;"]+)/i', $style_value, $bg_matches)) {
+            $final_styles = preg_replace('/background-color:[^;]+;/', 'background-color:' . trim($bg_matches[1]) . ';', $final_styles);
+          }
+          // Override text color if custom (avoid matching inside background-color)
+          if (preg_match('/(?:^|;)\s*color:\s*([^;"]+)/i', $style_value, $color_matches)) {
+            $final_styles = preg_replace('/(?<![a-z-])color:[^;]+;/', 'color:' . trim($color_matches[1]) . ' !important;', $final_styles);
+          }
         }
 
-        return '<a href="' . esc_url($href) . '" style="' . $button_styles . $custom_styles . '">' . $text . '</a>';
+        return '<a href="' . esc_url($href) . '" style="' . $final_styles . '">' . $text . '</a>';
       },
       $content
     );
@@ -671,48 +744,34 @@ class MAILPN_Mailing {
   public function mailpn_template($mailpn_subject, $mailpn_content, $mailpn_socials, $mailpn_legal_name, $mailpn_legal_address, $mailpn_user_to, $mailpn_id = 0, $mailpn_subtitle = '') {
     $mailpn_template_css = file_get_contents(MAILPN_DIR . 'assets/css/mail-template.css');
 
-    // Get main color from settings and replace in CSS
-    $main_color = get_option('mailpn_links_color');
-    if (empty($main_color)) {
-      $main_color = '#86b3ac'; // Default color if not set
-    }
-
-    // Replace default button color with main color in CSS
-    $mailpn_template_css = str_replace('#007cba', $main_color, $mailpn_template_css);
-
     // Get design settings
+    $main_color = get_option('mailpn_links_color', '#2271b1');
     $font_family = get_option('mailpn_font_family', 'Arial, sans-serif');
     $font_size_desktop = get_option('mailpn_font_size_desktop', '14');
-    $font_size_mobile = get_option('mailpn_font_size_mobile', '16');
-    $heading_h1 = get_option('mailpn_heading_size_h1', '26');
-    $heading_h2 = get_option('mailpn_heading_size_h2', '22');
-    $heading_h3 = get_option('mailpn_heading_size_h3', '20');
-    $line_height = get_option('mailpn_line_height', '1.6');
+    $font_size_mobile = get_option('mailpn_font_size_mobile', '14');
+    $heading_h1 = get_option('mailpn_heading_size_h1', '22');
+    $heading_h2 = get_option('mailpn_heading_size_h2', '18');
+    $heading_h3 = get_option('mailpn_heading_size_h3', '16');
+    $line_height = get_option('mailpn_line_height', '1.4');
     $bg_color = get_option('mailpn_background_color', '#ffffff');
     $text_color = get_option('mailpn_text_color', '#333333');
-    $button_bg = get_option('mailpn_button_bg_color', '#ffffff');
+    $button_bg = get_option('mailpn_button_bg_color');
+    // Fall back to main color when button bg is empty or default white
+    if (empty($button_bg) || $button_bg === '#ffffff') {
+      $button_bg = $main_color;
+    }
     $button_text = get_option('mailpn_button_text_color', '#ffffff');
     $button_radius = get_option('mailpn_button_border_radius', '4');
     $header_bg = get_option('mailpn_header_bg_color', '#ffffff');
     $footer_bg = get_option('mailpn_footer_bg_color', '#ffffff');
     $footer_text = get_option('mailpn_footer_text_color', '#6c757d');
 
-    // Apply design settings to CSS
-    $mailpn_template_css = str_replace('Arial, sans-serif', $font_family, $mailpn_template_css);
-    $mailpn_template_css = str_replace('font-size: 16px', 'font-size: ' . $font_size_mobile . 'px', $mailpn_template_css);
-    $mailpn_template_css = str_replace('font-size: 26px', 'font-size: ' . $heading_h1 . 'px', $mailpn_template_css);
-    $mailpn_template_css = str_replace('font-size: 22px', 'font-size: ' . $heading_h2 . 'px', $mailpn_template_css);
-    $mailpn_template_css = str_replace('font-size: 20px', 'font-size: ' . $heading_h3 . 'px', $mailpn_template_css);
-    $mailpn_template_css = str_replace('#ffffff', $bg_color, $mailpn_template_css);
-    $mailpn_template_css = str_replace('background-color: #86b3ac', 'background-color: ' . $button_bg, $mailpn_template_css);
-    $mailpn_template_css = str_replace('color: #ffffff !important', 'color: ' . $button_text . ' !important', $mailpn_template_css);
-    $mailpn_template_css = str_replace('border-radius: 4px', 'border-radius: ' . $button_radius . 'px', $mailpn_template_css);
-    $mailpn_template_css = str_replace('background-color: #f8f9fa', 'background-color: ' . $header_bg, $mailpn_template_css);
-    $mailpn_template_css = str_replace('color: #6c757d', 'color: ' . $footer_text, $mailpn_template_css);
-
-    wp_register_style('mail-template-css', false);
-    wp_enqueue_style('mail-template-css');
-    wp_add_inline_style('mail-template-css', $mailpn_template_css);
+    // Replace CSS template tokens with actual values
+    $mailpn_template_css = str_replace(
+      ['{{FONT_FAMILY}}', '{{BG_COLOR}}', '{{MAIN_COLOR}}', '{{BUTTON_BG}}', '{{BUTTON_TEXT}}', '{{BUTTON_RADIUS}}', '{{HEADER_BG}}', '{{FOOTER_BG}}', '{{FOOTER_TEXT}}', '{{FONT_SIZE_MOBILE}}', '{{HEADING_H1}}', '{{HEADING_H2}}', '{{HEADING_H3}}', '{{LINE_HEIGHT}}'],
+      [$font_family, $bg_color, $main_color, $button_bg, $button_text, $button_radius . 'px', $header_bg, $footer_bg, $footer_text, $font_size_mobile, $heading_h1, $heading_h2, $heading_h3, $line_height],
+      $mailpn_template_css
+    );
 
     $mailpn_max_width = get_option('mailpn_max_width');
     $mailpn_max_width_val = (!empty($mailpn_max_width) && is_numeric($mailpn_max_width)) ? intval($mailpn_max_width) : 700;
@@ -725,18 +784,21 @@ class MAILPN_Mailing {
       <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
       <html xmlns="http://www.w3.org/1999/xhtml">
         <head>
-          <meta name="viewport" content="width=device-width" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
           <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
           <title><?php echo esc_html($mailpn_subject); ?></title>
+          <style type="text/css">
+            <?php echo $mailpn_template_css; ?>
+          </style>
         </head>
 
         <body class="mailpn-content" style="margin:0;padding:0;font-family:<?php echo esc_attr($font_family); ?>;font-size:<?php echo esc_attr($font_size_desktop); ?>px;color:<?php echo esc_attr($text_color); ?>;line-height:<?php echo esc_attr($line_height); ?>;background-color:<?php echo esc_attr($bg_color); ?>;">
-          <table class="mailpn-table-main" width="<?php echo esc_attr($mailpn_max_width_val); ?>" cellpadding="0" cellspacing="0" border="0" align="center" style="width:100%;max-width:<?php echo esc_attr($mailpn_max_width_val); ?>px;margin:0 auto;font-family:<?php echo esc_attr($font_family); ?>;background-color:<?php echo esc_attr($bg_color); ?>;">
+          <table class="mailpn-table-main" cellpadding="0" cellspacing="0" border="0" align="center" style="width:100%;max-width:<?php echo esc_attr($mailpn_max_width_val); ?>px;margin:0 auto;font-family:<?php echo esc_attr($font_family); ?>;background-color:<?php echo esc_attr($bg_color); ?>;">
             <tbody>
               <?php if (!empty(get_option('mailpn_image_header'))): ?>
                 <tr style="text-align:center;background-color:<?php echo esc_attr($header_bg); ?>;">
                   <td class="text-align-center mailpn-mb-30" align="center" style="background-color:<?php echo esc_attr($header_bg); ?>;">
-                    <a target="_blank" href="<?php echo esc_url(home_url()); ?>" class="mailpn-header-image" style="color:<?php echo esc_attr($main_color); ?>;text-decoration:none;"><img src="<?php echo esc_url(wp_get_attachment_image_src(get_option('mailpn_image_header'), 'full')[0]); ?>" border="0" alt="<?php echo esc_attr($mailpn_legal_name); ?>" style="max-height:150px;width:auto;margin-right:5px;margin-left:5px;margin-bottom:30px;"></a>
+                    <a target="_blank" href="<?php echo esc_url(home_url()); ?>" class="mailpn-header-image" style="color:<?php echo esc_attr($main_color); ?>;text-decoration:none;"><img src="<?php echo esc_url(wp_get_attachment_image_src(get_option('mailpn_image_header'), 'full')[0]); ?>" border="0" alt="<?php echo esc_attr($mailpn_legal_name); ?>" style="max-height:150px;max-width:100%;width:auto;margin-right:5px;margin-left:5px;margin-bottom:30px;"></a>
                   </td>
                 </tr>
               <?php endif ?>
@@ -755,7 +817,7 @@ class MAILPN_Mailing {
               <?php endif; ?>
 
               <tr style="text-align:left;">
-                <td style="font-family:<?php echo esc_attr($font_family); ?>;font-size:<?php echo esc_attr($font_size_desktop); ?>px;color:<?php echo esc_attr($text_color); ?>;line-height:<?php echo esc_attr($line_height); ?>;">
+                <td class="mailpn-content" style="font-family:<?php echo esc_attr($font_family); ?>;font-size:<?php echo esc_attr($font_size_desktop); ?>px;color:<?php echo esc_attr($text_color); ?>;line-height:<?php echo esc_attr($line_height); ?>;padding:20px;">
                   <?php echo do_shortcode($mailpn_content); ?>
                 </td>
               </tr>
@@ -785,7 +847,7 @@ class MAILPN_Mailing {
               <?php if (!empty(get_option('mailpn_image_footer'))): ?>
                 <tr style="background-color:<?php echo esc_attr($footer_bg); ?>;">
                   <td class="text-align-center" align="center" style="background-color:<?php echo esc_attr($footer_bg); ?>;">
-                    <a target="_blank" href="<?php echo esc_url(home_url()); ?>" class="mailpn-header-image"><img src="<?php echo esc_url(wp_get_attachment_image_src(get_option('mailpn_image_footer'), 'full')[0]); ?>" border="0" alt="<?php echo esc_attr($mailpn_legal_name); ?>" style="height:50px;width:auto;margin-right:5px;margin-left:5px;"></a>
+                    <a target="_blank" href="<?php echo esc_url(home_url()); ?>" class="mailpn-header-image"><img src="<?php echo esc_url(wp_get_attachment_image_src(get_option('mailpn_image_footer'), 'full')[0]); ?>" border="0" alt="<?php echo esc_attr($mailpn_legal_name); ?>" style="height:50px;max-width:100%;width:auto;margin-right:5px;margin-left:5px;"></a>
                   </td>
                 </tr>
               <?php endif ?>
@@ -1864,6 +1926,39 @@ class MAILPN_Mailing {
       if (empty($mailpn_queue_paused)) {
         foreach ($mailpn_queue as $mail_id => $mail_users) {
           if (!empty($mail_users)) {
+            // Time window check: skip this template if outside its time window
+            if (get_post_meta($mail_id, 'mailpn_time', true) === 'on') {
+              $mailpn_now = current_time('timestamp');
+              $date_start = get_post_meta($mail_id, 'mailpn_date_start', true);
+              $time_start = get_post_meta($mail_id, 'mailpn_time_start', true);
+              $date_end   = get_post_meta($mail_id, 'mailpn_date_end', true);
+              $time_end   = get_post_meta($mail_id, 'mailpn_time_end', true);
+
+              // Before start: keep emails in queue, skip to next template
+              if (!empty($date_start)) {
+                $start_string = $date_start . (!empty($time_start) ? ' ' . $time_start : ' 00:00');
+                $start_timestamp = strtotime($start_string);
+                if ($start_timestamp && $mailpn_now < $start_timestamp) {
+                  continue;
+                }
+              }
+
+              // After end: remove all users from queue and mark as expired
+              if (!empty($date_end)) {
+                $end_string = $date_end . (!empty($time_end) ? ' ' . $time_end : ' 23:59');
+                $end_timestamp = strtotime($end_string);
+                if ($end_timestamp && $mailpn_now > $end_timestamp) {
+                  unset($mailpn_queue[$mail_id]);
+                  update_option('mailpn_queue', $mailpn_queue);
+                  update_post_meta($mail_id, 'mailpn_status', 'expired');
+                  if (defined('WP_DEBUG') && WP_DEBUG) {
+                    error_log(sprintf('MAILPN: Email template ID %d expired - time window ended (%s)', $mail_id, $end_string));
+                  }
+                  continue;
+                }
+              }
+            }
+
             foreach ($mail_users as $user_id) {
               // Log debug info before sending
               self::mailpn_log_send_attempt($mail_id, $user_id, 'queue_process');

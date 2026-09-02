@@ -84,6 +84,9 @@ class MAILPN_Cron {
 
     // Clean up problematic pending registrations
     $settings_plugin->mailpn_cleanup_problematic_pending_registrations();
+
+    // Auto-delete old mail records if enabled
+    $this->mailpn_auto_delete_old_records();
   }
 
   /**
@@ -113,16 +116,7 @@ class MAILPN_Cron {
     // Log the cron execution time
     $current_time = time();
     update_option('mailpn_last_cron_run', $current_time);
-    
-    // Log cron execution details
-    $cron_log = get_option('mailpn_cron_debug_log', []);
-    $cron_log[] = [
-      'timestamp' => $current_time,
-      'date' => date('Y-m-d H:i:s', $current_time),
-      'action' => 'cron_started'
-    ];
-    update_option('mailpn_cron_debug_log', $cron_log);
-    
+
     $mailing_plugin = new MAILPN_Mailing();
     $mailing_plugin->mailpn_queue_process();
     
@@ -140,15 +134,6 @@ class MAILPN_Cron {
 
     // Process periodic emails
     $this->mailpn_process_periodic_emails();
-
-    // Log cron completion
-    $cron_log = get_option('mailpn_cron_debug_log', []);
-    $cron_log[] = [
-      'timestamp' => time(),
-      'date' => date('Y-m-d H:i:s'),
-      'action' => 'cron_completed'
-    ];
-    update_option('mailpn_cron_debug_log', $cron_log);
   }
 
 	/**
@@ -174,16 +159,7 @@ class MAILPN_Cron {
     $current_time = time();
     $mailing_plugin = new MAILPN_Mailing();
     $settings_plugin = new MAILPN_Settings();
-    
-    // Log processing start
-    $cron_log = get_option('mailpn_cron_debug_log', []);
-    $cron_log[] = [
-      'timestamp' => $current_time,
-      'date' => date('Y-m-d H:i:s', $current_time),
-      'action' => 'processing_scheduled_emails_start',
-      'current_time' => $current_time
-    ];
-    
+
     // Process emails in a loop until no more are ready to be sent
     while (true) {
       $scheduled_emails = get_option('mailpn_scheduled_welcome_emails', []);
@@ -192,17 +168,7 @@ class MAILPN_Cron {
       if (!is_array($scheduled_emails)) {
         $scheduled_emails = [];
       }
-      
-      // Log scheduled emails count
-      $cron_log = get_option('mailpn_cron_debug_log', []);
-      $cron_log[] = [
-        'timestamp' => time(),
-        'date' => date('Y-m-d H:i:s'),
-        'action' => 'scheduled_emails_count',
-        'count' => count($scheduled_emails)
-      ];
-      update_option('mailpn_cron_debug_log', $cron_log);
-      
+
       if (empty($scheduled_emails)) {
         break;
       }
@@ -211,36 +177,12 @@ class MAILPN_Cron {
       $emails_processed = false;
       
       foreach ($scheduled_emails as $index => $scheduled_email) {
-        // Log each email being checked
-        $cron_log = get_option('mailpn_cron_debug_log', []);
-        $cron_log[] = [
-          'timestamp' => time(),
-          'date' => date('Y-m-d H:i:s'),
-          'action' => 'checking_email',
-          'email_id' => $scheduled_email['email_id'],
-          'user_id' => $scheduled_email['user_id'],
-          'scheduled_time' => $scheduled_email['scheduled_time'],
-          'current_time' => $current_time,
-          'should_send' => ($scheduled_email['scheduled_time'] <= $current_time)
-        ];
-        update_option('mailpn_cron_debug_log', $cron_log);
-        
         // Check if it's time to send this email
         if ($scheduled_email['scheduled_time'] <= $current_time) {
           // Re-check if user still matches the distribution settings (role, user list, etc.)
           if (!MAILPN_Mailing::mailpn_user_matches_distribution($scheduled_email['email_id'], $scheduled_email['user_id'])) {
             // User no longer qualifies for this email
             $this->mailpn_log_scheduled_welcome_email($scheduled_email, 'skipped_distribution_mismatch');
-
-            $cron_log = get_option('mailpn_cron_debug_log', []);
-            $cron_log[] = [
-              'timestamp' => time(),
-              'date' => date('Y-m-d H:i:s'),
-              'action' => 'email_skipped_distribution',
-              'email_id' => $scheduled_email['email_id'],
-              'user_id' => $scheduled_email['user_id']
-            ];
-            update_option('mailpn_cron_debug_log', $cron_log);
 
             $emails_processed = true;
             continue;
@@ -256,35 +198,13 @@ class MAILPN_Cron {
             );
 
             // Add to queue for immediate sending
-            $queue_result = $mailing_plugin->mailpn_queue_add($scheduled_email['email_id'], $scheduled_email['user_id']);
-            
-            // Log the queue add result
-            $cron_log = get_option('mailpn_cron_debug_log', []);
-            $cron_log[] = [
-              'timestamp' => time(),
-              'date' => date('Y-m-d H:i:s'),
-              'action' => 'email_added_to_queue',
-              'email_id' => $scheduled_email['email_id'],
-              'user_id' => $scheduled_email['user_id'],
-              'queue_result' => $queue_result
-            ];
-            update_option('mailpn_cron_debug_log', $cron_log);
-            
+            $mailing_plugin->mailpn_queue_add($scheduled_email['email_id'], $scheduled_email['user_id']);
+
             // Log the scheduled email as sent
             $this->mailpn_log_scheduled_welcome_email($scheduled_email);
           } else {
             // Log the scheduled email as skipped due to exception
             $this->mailpn_log_scheduled_welcome_email($scheduled_email, 'skipped_exception');
-            
-            $cron_log = get_option('mailpn_cron_debug_log', []);
-            $cron_log[] = [
-              'timestamp' => time(),
-              'date' => date('Y-m-d H:i:s'),
-              'action' => 'email_skipped_exception',
-              'email_id' => $scheduled_email['email_id'],
-              'user_id' => $scheduled_email['user_id']
-            ];
-            update_option('mailpn_cron_debug_log', $cron_log);
           }
           
           $emails_processed = true;
@@ -296,34 +216,14 @@ class MAILPN_Cron {
 
       // Update the scheduled emails list
       update_option('mailpn_scheduled_welcome_emails', $updated_scheduled_emails);
-      
-      // Log final count
-      $cron_log = get_option('mailpn_cron_debug_log', []);
-      $cron_log[] = [
-        'timestamp' => time(),
-        'date' => date('Y-m-d H:i:s'),
-        'action' => 'scheduled_emails_updated',
-        'remaining_count' => count($updated_scheduled_emails),
-        'emails_processed' => $emails_processed
-      ];
-      update_option('mailpn_cron_debug_log', $cron_log);
-      
+
       // If no emails were processed in this iteration, break the loop
       if (!$emails_processed) {
         break;
       }
     }
-    
-    // Log processing end
-    $cron_log = get_option('mailpn_cron_debug_log', []);
-    $cron_log[] = [
-      'timestamp' => time(),
-      'date' => date('Y-m-d H:i:s'),
-      'action' => 'processing_scheduled_emails_end'
-    ];
-    update_option('mailpn_cron_debug_log', $cron_log);
   }
-  
+
   /**
    * Log a scheduled welcome email as sent
    *
@@ -757,5 +657,40 @@ class MAILPN_Cron {
    */
   private function mailpn_periodic_interval_seconds($period) {
     return self::mailpn_periodic_interval_seconds_static($period);
+  }
+
+  /**
+   * Auto-delete old mail records
+   *
+   * Deletes mailpn_rec posts older than the configured number of days
+   * to prevent database bloat. Processes up to 500 records per run.
+   *
+   * @since       1.0.0
+   */
+  public function mailpn_auto_delete_old_records() {
+    if (get_option('mailpn_auto_delete_records') !== 'on') {
+      return;
+    }
+
+    $days = intval(get_option('mailpn_auto_delete_records_days', 365));
+    if ($days < 30) {
+      $days = 30;
+    }
+
+    $cutoff_date = date('Y-m-d H:i:s', strtotime("-{$days} days"));
+
+    $old_records = get_posts([
+      'post_type'      => 'mailpn_rec',
+      'post_status'    => 'any',
+      'posts_per_page' => 500,
+      'date_query'     => [
+        ['before' => $cutoff_date],
+      ],
+      'fields'         => 'ids',
+    ]);
+
+    foreach ($old_records as $post_id) {
+      wp_delete_post($post_id, true);
+    }
   }
 }

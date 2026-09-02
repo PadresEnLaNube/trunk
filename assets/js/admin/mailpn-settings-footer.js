@@ -202,6 +202,7 @@
   var previewFooter = document.getElementById('preview-footer');
   var desktopBtn = document.getElementById('mailpn-preview-desktop');
   var mobileBtn = document.getElementById('mailpn-preview-mobile');
+  var deviceFrame = document.getElementById('mailpn-device-frame');
 
   if (previewContent && previewH1 && previewButton) {
     // Design settings inputs
@@ -214,6 +215,7 @@
     var lineHeightInput = document.getElementById('mailpn_line_height');
     var bgColorInput = document.getElementById('mailpn_background_color');
     var textColorInput = document.getElementById('mailpn_text_color');
+    var linksColorInput = document.getElementById('mailpn_links_color');
     var buttonBgInput = document.getElementById('mailpn_button_bg_color');
     var buttonTextInput = document.getElementById('mailpn_button_text_color');
     var buttonRadiusInput = document.getElementById('mailpn_button_border_radius');
@@ -227,6 +229,10 @@
         previewMode = 'desktop';
         desktopBtn.classList.add('active');
         mobileBtn.classList.remove('active');
+        if (deviceFrame) {
+          deviceFrame.classList.remove('mailpn-device-mobile');
+          deviceFrame.classList.add('mailpn-device-desktop');
+        }
         updatePreview();
       });
 
@@ -235,6 +241,10 @@
         previewMode = 'mobile';
         mobileBtn.classList.add('active');
         desktopBtn.classList.remove('active');
+        if (deviceFrame) {
+          deviceFrame.classList.remove('mailpn-device-desktop');
+          deviceFrame.classList.add('mailpn-device-mobile');
+        }
         updatePreview();
       });
     }
@@ -243,15 +253,18 @@
       // Get current values
       var fontFamily = fontFamilyInput ? fontFamilyInput.value : 'Arial, sans-serif';
       var fontSize = previewMode === 'mobile'
-        ? (fontSizeMobileInput ? fontSizeMobileInput.value : '16')
+        ? (fontSizeMobileInput ? fontSizeMobileInput.value : '14')
         : (fontSizeDesktopInput ? fontSizeDesktopInput.value : '14');
-      var h1Size = headingH1Input ? headingH1Input.value : '26';
-      var h2Size = headingH2Input ? headingH2Input.value : '22';
-      var h3Size = headingH3Input ? headingH3Input.value : '20';
-      var lineHeight = lineHeightInput ? lineHeightInput.value : '1.6';
+      var h1Size = headingH1Input ? headingH1Input.value : '22';
+      var h2Size = headingH2Input ? headingH2Input.value : '18';
+      var h3Size = headingH3Input ? headingH3Input.value : '16';
+      var lineHeight = lineHeightInput ? lineHeightInput.value : '1.4';
       var bgColor = bgColorInput ? bgColorInput.value : '#ffffff';
       var textColor = textColorInput ? textColorInput.value : '#333333';
-      var buttonBg = buttonBgInput ? buttonBgInput.value : '#ffffff';
+      var linksColor = linksColorInput ? linksColorInput.value : '#2271b1';
+      var buttonBg = buttonBgInput ? buttonBgInput.value : '#2271b1';
+      // Fall back to links color when button bg is default white
+      if (buttonBg === '#ffffff') buttonBg = linksColor;
       var buttonText = buttonTextInput ? buttonTextInput.value : '#ffffff';
       var buttonRadius = buttonRadiusInput ? buttonRadiusInput.value : '4';
       var footerBg = footerBgInput ? footerBgInput.value : '#ffffff';
@@ -298,6 +311,12 @@
         previewParagraph2.style.lineHeight = lineHeight;
       }
 
+      // Apply to links
+      var previewLinks = previewContent.querySelectorAll('.mailpn-preview-link');
+      for (var i = 0; i < previewLinks.length; i++) {
+        previewLinks[i].style.color = linksColor;
+      }
+
       // Apply to list
       if (previewList) {
         previewList.style.fontSize = fontSize + 'px';
@@ -331,7 +350,7 @@
     var inputs = [
       fontFamilyInput, fontSizeDesktopInput, fontSizeMobileInput,
       headingH1Input, headingH2Input, headingH3Input, lineHeightInput,
-      bgColorInput, textColorInput, buttonBgInput, buttonTextInput,
+      bgColorInput, textColorInput, linksColorInput, buttonBgInput, buttonTextInput,
       buttonRadiusInput, footerBgInput, footerTextInput
     ];
 
